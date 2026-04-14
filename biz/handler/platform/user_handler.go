@@ -4,10 +4,16 @@ package platform
 
 import (
 	"context"
+	"errors"
+	"log"
+
+	"video-platform/biz/model/platform"
+	v1 "video-platform/biz/model/platform"
+	"video-platform/biz/service"
+	"video-platform/pkg/response"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	platform "video-platform/biz/model/platform"
 )
 
 // Register .
@@ -21,9 +27,24 @@ func Register(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	resp := new(platform.RegisterResponse)
+	err = service.Register(ctx, req.Username, req.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrUserExists) {
+			c.JSON(consts.StatusConflict, &v1.RegisterResponse{
+				Base: response.Error(response.CodeUserExists),
+			})
+			return
+		}
+		log.Printf("[用户模块][注册] 创建用户失败 username=%s: %v", req.Username, err)
+		c.JSON(consts.StatusInternalServerError, &v1.RegisterResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
 
-	c.JSON(consts.StatusOK, resp)
+	c.JSON(consts.StatusOK, &v1.RegisterResponse{
+		Base: response.Success(),
+	})
 }
 
 // Login .

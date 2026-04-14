@@ -3,11 +3,29 @@
 package main
 
 import (
+	"log"
+	"os"
+	"video-platform/biz/dal/db"
+	"video-platform/biz/dal/rdb"
+
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	h := server.Default()
+	// 加载 .env 配置文件
+	if err := godotenv.Overload(); err != nil {
+		log.Fatal("未找到 .env 文件")
+	}
+
+	db.InitMySQL()
+	rdb.InitRedis()
+
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "8888"
+	}
+	h := server.Default(server.WithHostPorts(":" + port))
 
 	register(h)
 	h.Spin()
