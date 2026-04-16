@@ -17,6 +17,9 @@ const (
 	CodeTokenExpired          = 1004
 	CodeTokenInvalid          = 1005
 	CodeUnsupportedAvatarType = 1006
+	CodeCannotFollowSelf      = 1007
+	CodeFollowNotFound        = 1008
+	CodeAlreadyFollowed       = 1009
 	CodeInternalError         = 500
 )
 
@@ -33,6 +36,9 @@ var codeMsg = map[int32]string{
 	CodeTokenExpired:          "令牌已过期",
 	CodeTokenInvalid:          "令牌无效",
 	CodeUnsupportedAvatarType: "不支持的头像文件类型",
+	CodeCannotFollowSelf:      "不能关注自己",
+	CodeFollowNotFound:        "关注关系不存在",
+	CodeAlreadyFollowed:       "已经关注该用户",
 	CodeInternalError:         "服务器内部错误",
 }
 

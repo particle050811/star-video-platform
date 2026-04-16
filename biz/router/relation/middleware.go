@@ -4,6 +4,7 @@ package relation
 
 import (
 	"github.com/cloudwego/hertz/pkg/app"
+	"video-platform/pkg/middleware"
 )
 
 func rootMw() []app.HandlerFunc {
@@ -27,8 +28,7 @@ func _relationMw() []app.HandlerFunc {
 }
 
 func _relationactionMw() []app.HandlerFunc {
-	// your code...
-	return nil
+	return []app.HandlerFunc{middleware.JWTAuth()}
 }
 
 func _followerMw() []app.HandlerFunc {
@@ -57,6 +57,5 @@ func _friendMw() []app.HandlerFunc {
 }
 
 func _listfriendsMw() []app.HandlerFunc {
-	// your code...
-	return nil
+	return []app.HandlerFunc{middleware.JWTAuth()}
 }

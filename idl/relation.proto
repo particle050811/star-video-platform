@@ -28,7 +28,7 @@ enum RelationActionType {
 
 message RelationActionRequest {
   string to_user_id = 1 [(.api.body) = "to_user_id"];
-  RelationActionType action_type = 2 [(.api.body) = "action_type"];
+  RelationActionType action_type = 2 [(.api.body) = "action_type", (.api.vd) = "$==1 || $==2"];
 }
 
 message RelationActionResponse {

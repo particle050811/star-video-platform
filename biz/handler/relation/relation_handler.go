@@ -4,72 +4,188 @@ package relation
 
 import (
 	"context"
+	"errors"
+	"log"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	relation "video-platform/biz/model/relation"
+	"video-platform/biz/service"
+	"video-platform/pkg/middleware"
+	"video-platform/pkg/parser"
+	"video-platform/pkg/response"
 )
 
 // RelationAction .
 // @router /api/v1/relation/action [POST]
 func RelationAction(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req relation.RelationActionRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.RelationActionResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(relation.RelationActionResponse)
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	fromUserID := userIDValue.(uint)
 
-	c.JSON(consts.StatusOK, resp)
+	toUserID, err := parser.UserID(req.ToUserId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.RelationActionResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	err = service.RelationAction(ctx, fromUserID, toUserID, req.ActionType)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCannotFollowSelf):
+			c.JSON(consts.StatusBadRequest, &relation.RelationActionResponse{
+				Base: response.Error(response.CodeCannotFollowSelf),
+			})
+			return
+		case errors.Is(err, service.ErrAlreadyFollowed):
+			c.JSON(consts.StatusConflict, &relation.RelationActionResponse{
+				Base: response.Error(response.CodeAlreadyFollowed),
+			})
+			return
+		case errors.Is(err, service.ErrUserNotFound):
+			c.JSON(consts.StatusNotFound, &relation.RelationActionResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		case errors.Is(err, service.ErrFollowNotFound):
+			c.JSON(consts.StatusNotFound, &relation.RelationActionResponse{
+				Base: response.Error(response.CodeFollowNotFound),
+			})
+			return
+		}
+
+		log.Printf("[社交模块][关系操作] 操作失败 from_user_id=%d to_user_id=%d action_type=%s: %v", fromUserID, toUserID, req.ActionType.String(), err)
+		c.JSON(consts.StatusInternalServerError, &relation.RelationActionResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, &relation.RelationActionResponse{
+		Base: response.Success("操作成功"),
+	})
 }
 
 // ListFollowings .
 // @router /api/v1/relation/following/list [GET]
 func ListFollowings(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req relation.ListFollowingsRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowingsResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(relation.ListFollowingsResponse)
+	userID, err := parser.UserID(req.UserId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowingsResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
 
-	c.JSON(consts.StatusOK, resp)
+	data, err := service.ListFollowings(ctx, userID, req.PageNum, req.PageSize)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &relation.ListFollowingsResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		log.Printf("[社交模块][关注列表] 查询失败 user_id=%d: %v", userID, err)
+		c.JSON(consts.StatusInternalServerError, &relation.ListFollowingsResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, &relation.ListFollowingsResponse{
+		Base: response.Success("获取关注列表成功"),
+		Data: data,
+	})
 }
 
 // ListFollowers .
 // @router /api/v1/relation/follower/list [GET]
 func ListFollowers(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req relation.ListFollowersRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowersResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(relation.ListFollowersResponse)
+	userID, err := parser.UserID(req.UserId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowersResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
 
-	c.JSON(consts.StatusOK, resp)
+	data, err := service.ListFollowers(ctx, userID, req.PageNum, req.PageSize)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &relation.ListFollowersResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		log.Printf("[社交模块][粉丝列表] 查询失败 user_id=%d: %v", userID, err)
+		c.JSON(consts.StatusInternalServerError, &relation.ListFollowersResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, &relation.ListFollowersResponse{
+		Base: response.Success("获取粉丝列表成功"),
+		Data: data,
+	})
 }
 
 // ListFriends .
 // @router /api/v1/relation/friend/list [GET]
 func ListFriends(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req relation.ListFriendsRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFriendsResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(relation.ListFriendsResponse)
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
 
-	c.JSON(consts.StatusOK, resp)
+	data, err := service.ListFriends(ctx, userID, req.PageNum, req.PageSize)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &relation.ListFriendsResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		log.Printf("[社交模块][好友列表] 查询失败 user_id=%d: %v", userID, err)
+		c.JSON(consts.StatusInternalServerError, &relation.ListFriendsResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, &relation.ListFriendsResponse{
+		Base: response.Success("获取好友列表成功"),
+		Data: data,
+	})
 }
