@@ -7,6 +7,7 @@ import (
 	"os"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/rdb"
+	"video-platform/pkg/auth"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/joho/godotenv"
@@ -20,6 +21,7 @@ func main() {
 
 	db.InitMySQL()
 	rdb.InitRedis()
+	auth.InitJWT()
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

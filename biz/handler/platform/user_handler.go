@@ -37,7 +37,7 @@ func Register(ctx context.Context, c *app.RequestContext) {
 			})
 			return
 		}
-		log.Printf("[用户模块][注册] 创建用户失败 username=%s: %v", req.Username, err)
+		log.Printf("[用户模块][注册] 注册用户失败 username=%s: %v", req.Username, err)
 		c.JSON(consts.StatusInternalServerError, &v1.RegisterResponse{
 			Base: response.InternalError(),
 		})
@@ -45,7 +45,7 @@ func Register(ctx context.Context, c *app.RequestContext) {
 	}
 
 	c.JSON(consts.StatusOK, &v1.RegisterResponse{
-		Base: response.Success(),
+		Base: response.Success("注册用户成功"),
 	})
 }
 
@@ -56,11 +56,38 @@ func Login(ctx context.Context, c *app.RequestContext) {
 	var req platform.LoginRequest
 	err = c.BindAndValidate(&req)
 	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+		c.JSON(consts.StatusBadRequest, &v1.LoginResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(platform.LoginResponse)
+	accessToken, refreshToken, err := service.Login(ctx, req.Username, req.Password)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &v1.LoginResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		if errors.Is(err, service.ErrPasswordWrong) {
+			c.JSON(consts.StatusUnauthorized, &v1.LoginResponse{
+				Base: response.Error(response.CodePasswordWrong),
+			})
+			return
+		}
+		log.Printf("[用户模块][登录] 登录失败 username=%s: %v", req.Username, err)
+		c.JSON(consts.StatusInternalServerError, &v1.LoginResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	resp := &platform.LoginResponse{
+		Base:         response.Success("登录成功"),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
 
 	c.JSON(consts.StatusOK, resp)
 }

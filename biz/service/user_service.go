@@ -5,14 +5,14 @@ import (
 	"errors"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
+	"video-platform/pkg/auth"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 // Register 用户注册
 func Register(ctx context.Context, username, password string) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := auth.HashPassword(password)
 	if err != nil {
 		return err
 	}
@@ -25,4 +25,20 @@ func Register(ctx context.Context, username, password string) error {
 		return err
 	}
 	return nil
+}
+
+func Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
+	user, err := db.GetUserByUsername(ctx, username)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", "", ErrUserNotFound
+		}
+		return "", "", err
+	}
+
+	if err := auth.CheckPassword(user.Password, password); err != nil {
+		return "", "", ErrPasswordWrong
+	}
+
+	return auth.GenerateTokenPair(user.ID)
 }

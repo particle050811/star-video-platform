@@ -4,6 +4,7 @@ package platform
 
 import (
 	"github.com/cloudwego/hertz/pkg/app"
+	"video-platform/pkg/middleware"
 )
 
 func rootMw() []app.HandlerFunc {
@@ -27,13 +28,11 @@ func _userMw() []app.HandlerFunc {
 }
 
 func _uploadavatarMw() []app.HandlerFunc {
-	// your code...
-	return nil
+	return []app.HandlerFunc{middleware.JWTAuth()}
 }
 
 func _getuserinfoMw() []app.HandlerFunc {
-	// your code...
-	return nil
+	return []app.HandlerFunc{middleware.JWTAuth()}
 }
 
 func _loginMw() []app.HandlerFunc {
