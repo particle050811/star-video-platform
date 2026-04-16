@@ -14,7 +14,6 @@ import (
 	"video-platform/pkg/middleware"
 	"video-platform/pkg/parser"
 	"video-platform/pkg/response"
-	"video-platform/pkg/upload"
 )
 
 // Register .
@@ -205,38 +204,21 @@ func UploadAvatar(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	savePath, avatarURL, err := upload.PrepareAvatar(userID, file.Filename)
+	err = service.UpdateUserAvatar(ctx, userID, file)
 	if err != nil {
-		if errors.Is(err, upload.ErrUnsupportedAvatarExt) {
+		if errors.Is(err, service.ErrUnsupportedAvatarExt) {
 			c.JSON(consts.StatusBadRequest, &user.UploadAvatarResponse{
 				Base: response.Error(response.CodeUnsupportedAvatarType),
 			})
 			return
 		}
-		log.Printf("[用户模块][上传头像] 准备头像上传失败 user_id=%d filename=%s: %v", userID, file.Filename, err)
-		c.JSON(consts.StatusInternalServerError, &user.UploadAvatarResponse{
-			Base: response.InternalError(),
-		})
-		return
-	}
-
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		log.Printf("[用户模块][上传头像] 保存头像失败 user_id=%d filename=%s: %v", userID, file.Filename, err)
-		c.JSON(consts.StatusInternalServerError, &user.UploadAvatarResponse{
-			Base: response.InternalError(),
-		})
-		return
-	}
-
-	err = service.UpdateUserAvatar(ctx, userID, avatarURL)
-	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &user.UploadAvatarResponse{
 				Base: response.Error(response.CodeUserNotFound),
 			})
 			return
 		}
-		log.Printf("[用户模块][上传头像] 更新头像地址失败 user_id=%d avatar_url=%s: %v", userID, avatarURL, err)
+		log.Printf("[用户模块][上传头像] 上传头像失败 user_id=%d filename=%s: %v", userID, file.Filename, err)
 		c.JSON(consts.StatusInternalServerError, &user.UploadAvatarResponse{
 			Base: response.InternalError(),
 		})

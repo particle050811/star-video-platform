@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"mime/multipart"
 	"strconv"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/user"
 	"video-platform/pkg/auth"
+	"video-platform/pkg/upload"
 
 	"gorm.io/gorm"
 )
@@ -76,10 +78,38 @@ func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
 	}, nil
 }
 
-func UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error {
-	err := db.UpdateUserAvatar(ctx, userID, avatarURL)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrUserNotFound
+func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) error {
+	user, err := db.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
 	}
-	return err
+
+	savePath, avatarURL, err := upload.PrepareAvatar(userID, file.Filename)
+	if err != nil {
+		if errors.Is(err, upload.ErrUnsupportedAvatarExt) {
+			return ErrUnsupportedAvatarExt
+		}
+		return err
+	}
+
+	if err := upload.SaveFile(file, savePath); err != nil {
+		return err
+	}
+
+	if err := db.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
+		_ = upload.RemoveAvatar(avatarURL)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	if user.AvatarURL != avatarURL {
+		_ = upload.RemoveAvatar(user.AvatarURL)
+	}
+
+	return nil
 }
