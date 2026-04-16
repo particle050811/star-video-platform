@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
-	v1 "video-platform/biz/model/platform"
+	v1 "video-platform/biz/model/user"
 	"video-platform/pkg/auth"
 
 	"gorm.io/gorm"

@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package api.video.v1;
+
+option go_package = "/relation";
+
+import "api.proto";
+import "common.proto";
+
+// SocialProfile 描述关注/粉丝/好友列表里的用户信息
+message SocialProfile {
+  string id = 1;
+  string username = 2;
+  string avatar_url = 3;
+}
+
+// SocialListWithTotal 用于社交相关的分页结果
+message SocialListWithTotal {
+  repeated SocialProfile items = 1;
+  int64 total = 2;
+}
+
+enum RelationActionType {
+  RELATION_ACTION_TYPE_UNSPECIFIED = 0;
+  RELATION_ACTION_TYPE_FOLLOW = 1;
+  RELATION_ACTION_TYPE_UNFOLLOW = 2;
+}
+
+message RelationActionRequest {
+  string to_user_id = 1 [(.api.body) = "to_user_id"];
+  RelationActionType action_type = 2 [(.api.body) = "action_type"];
+}
+
+message RelationActionResponse {
+  api.video.v1.BaseResponse base = 1;
+}
+
+message ListFollowingsRequest {
+  string user_id = 1 [(.api.query) = "user_id"];
+  int32 page_num = 2 [(.api.query) = "page_num"];
+  int32 page_size = 3 [(.api.query) = "page_size"];
+}
+
+message ListFollowingsResponse {
+  api.video.v1.BaseResponse base = 1;
+  SocialListWithTotal data = 2;
+}
+
+message ListFollowersRequest {
+  string user_id = 1 [(.api.query) = "user_id"];
+  int32 page_num = 2 [(.api.query) = "page_num"];
+  int32 page_size = 3 [(.api.query) = "page_size"];
+}
+
+message ListFollowersResponse {
+  api.video.v1.BaseResponse base = 1;
+  SocialListWithTotal data = 2;
+}
+
+message ListFriendsRequest {
+  int32 page_num = 1 [(.api.query) = "page_num"];
+  int32 page_size = 2 [(.api.query) = "page_size"];
+}
+
+message ListFriendsResponse {
+  api.video.v1.BaseResponse base = 1;
+  SocialListWithTotal data = 2;
+}
+
+service RelationHandler {
+  rpc RelationAction(RelationActionRequest) returns (RelationActionResponse) {
+    option (.api.post) = "/api/v1/relation/action";
+  }
+  rpc ListFollowings(ListFollowingsRequest) returns (ListFollowingsResponse) {
+    option (.api.get) = "/api/v1/relation/following/list";
+  }
+  rpc ListFollowers(ListFollowersRequest) returns (ListFollowersResponse) {
+    option (.api.get) = "/api/v1/relation/follower/list";
+  }
+  rpc ListFriends(ListFriendsRequest) returns (ListFriendsResponse) {
+    option (.api.get) = "/api/v1/relation/friend/list";
+  }
+}

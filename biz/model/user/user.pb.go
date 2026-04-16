@@ -4,7 +4,7 @@
 // 	protoc        v3.21.12
 // source: user.proto
 
-package platform
+package user
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -12,6 +12,7 @@ import (
 	reflect "reflect"
 	sync "sync"
 	_ "video-platform/biz/model/api"
+	platform "video-platform/biz/model/platform"
 )
 
 const (
@@ -145,7 +146,7 @@ type RegisterResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
 }
 
 func (x *RegisterResponse) Reset() {
@@ -180,7 +181,7 @@ func (*RegisterResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RegisterResponse) GetBase() *BaseResponse {
+func (x *RegisterResponse) GetBase() *platform.BaseResponse {
 	if x != nil {
 		return x.Base
 	}
@@ -247,10 +248,10 @@ type LoginResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base         *BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	Data         *User         `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
-	AccessToken  string        `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 访问令牌，有效期 15 分钟
-	RefreshToken string        `protobuf:"bytes,4,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 刷新令牌，有效期 7 天
+	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Data         *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
+	AccessToken  string                 `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 访问令牌，有效期 15 分钟
+	RefreshToken string                 `protobuf:"bytes,4,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 刷新令牌，有效期 7 天
 }
 
 func (x *LoginResponse) Reset() {
@@ -285,7 +286,7 @@ func (*LoginResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *LoginResponse) GetBase() *BaseResponse {
+func (x *LoginResponse) GetBase() *platform.BaseResponse {
 	if x != nil {
 		return x.Base
 	}
@@ -365,8 +366,8 @@ type GetUserInfoResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	Data *User         `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Data *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
 }
 
 func (x *GetUserInfoResponse) Reset() {
@@ -401,7 +402,7 @@ func (*GetUserInfoResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GetUserInfoResponse) GetBase() *BaseResponse {
+func (x *GetUserInfoResponse) GetBase() *platform.BaseResponse {
 	if x != nil {
 		return x.Base
 	}
@@ -460,7 +461,7 @@ type UploadAvatarResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
 }
 
 func (x *UploadAvatarResponse) Reset() {
@@ -495,7 +496,7 @@ func (*UploadAvatarResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *UploadAvatarResponse) GetBase() *BaseResponse {
+func (x *UploadAvatarResponse) GetBase() *platform.BaseResponse {
 	if x != nil {
 		return x.Base
 	}
@@ -555,9 +556,9 @@ type RefreshTokenResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base         *BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	AccessToken  string        `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 新的访问令牌
-	RefreshToken string        `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 新的刷新令牌（可选：滑动刷新）
+	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	AccessToken  string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 新的访问令牌
+	RefreshToken string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 新的刷新令牌（可选：滑动刷新）
 }
 
 func (x *RefreshTokenResponse) Reset() {
@@ -592,7 +593,7 @@ func (*RefreshTokenResponse) Descriptor() ([]byte, []int) {
 	return file_user_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *RefreshTokenResponse) GetBase() *BaseResponse {
+func (x *RefreshTokenResponse) GetBase() *platform.BaseResponse {
 	if x != nil {
 		return x.Base
 	}
@@ -719,10 +720,10 @@ var file_user_proto_rawDesc = []byte{
 	0x61, 0x70, 0x69, 0x2e, 0x76, 0x69, 0x64, 0x65, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x6c,
 	0x6f, 0x61, 0x64, 0x41, 0x76, 0x61, 0x74, 0x61, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
 	0x65, 0x22, 0x17, 0xd2, 0xc1, 0x18, 0x13, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x76, 0x31, 0x2f, 0x75,
-	0x73, 0x65, 0x72, 0x2f, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x42, 0x23, 0x5a, 0x21, 0x76, 0x69,
+	0x73, 0x65, 0x72, 0x2f, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x42, 0x1f, 0x5a, 0x1d, 0x76, 0x69,
 	0x64, 0x65, 0x6f, 0x2d, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x2f, 0x62, 0x69, 0x7a,
-	0x2f, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2f, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x2f, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -739,18 +740,18 @@ func file_user_proto_rawDescGZIP() []byte {
 
 var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_user_proto_goTypes = []interface{}{
-	(*User)(nil),                 // 0: api.video.v1.User
-	(*RegisterRequest)(nil),      // 1: api.video.v1.RegisterRequest
-	(*RegisterResponse)(nil),     // 2: api.video.v1.RegisterResponse
-	(*LoginRequest)(nil),         // 3: api.video.v1.LoginRequest
-	(*LoginResponse)(nil),        // 4: api.video.v1.LoginResponse
-	(*GetUserInfoRequest)(nil),   // 5: api.video.v1.GetUserInfoRequest
-	(*GetUserInfoResponse)(nil),  // 6: api.video.v1.GetUserInfoResponse
-	(*UploadAvatarRequest)(nil),  // 7: api.video.v1.UploadAvatarRequest
-	(*UploadAvatarResponse)(nil), // 8: api.video.v1.UploadAvatarResponse
-	(*RefreshTokenRequest)(nil),  // 9: api.video.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil), // 10: api.video.v1.RefreshTokenResponse
-	(*BaseResponse)(nil),         // 11: api.video.v1.BaseResponse
+	(*User)(nil),                  // 0: api.video.v1.User
+	(*RegisterRequest)(nil),       // 1: api.video.v1.RegisterRequest
+	(*RegisterResponse)(nil),      // 2: api.video.v1.RegisterResponse
+	(*LoginRequest)(nil),          // 3: api.video.v1.LoginRequest
+	(*LoginResponse)(nil),         // 4: api.video.v1.LoginResponse
+	(*GetUserInfoRequest)(nil),    // 5: api.video.v1.GetUserInfoRequest
+	(*GetUserInfoResponse)(nil),   // 6: api.video.v1.GetUserInfoResponse
+	(*UploadAvatarRequest)(nil),   // 7: api.video.v1.UploadAvatarRequest
+	(*UploadAvatarResponse)(nil),  // 8: api.video.v1.UploadAvatarResponse
+	(*RefreshTokenRequest)(nil),   // 9: api.video.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),  // 10: api.video.v1.RefreshTokenResponse
+	(*platform.BaseResponse)(nil), // 11: api.video.v1.BaseResponse
 }
 var file_user_proto_depIdxs = []int32{
 	11, // 0: api.video.v1.RegisterResponse.base:type_name -> api.video.v1.BaseResponse
@@ -782,7 +783,6 @@ func file_user_proto_init() {
 	if File_user_proto != nil {
 		return
 	}
-	file_common_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_user_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*User); i {
