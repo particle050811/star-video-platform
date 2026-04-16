@@ -10,6 +10,7 @@ import (
 	"video-platform/biz/model/platform"
 	v1 "video-platform/biz/model/platform"
 	"video-platform/biz/service"
+	"video-platform/pkg/parser"
 	"video-platform/pkg/response"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -44,9 +45,10 @@ func Register(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusOK, &v1.RegisterResponse{
+	resp := &v1.RegisterResponse{
 		Base: response.Success("注册用户成功"),
-	})
+	}
+	c.JSON(consts.StatusOK, resp)
 }
 
 // Login .
@@ -83,12 +85,11 @@ func Login(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	resp := &platform.LoginResponse{
+	resp := &v1.LoginResponse{
 		Base:         response.Success("登录成功"),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
-
 	c.JSON(consts.StatusOK, resp)
 }
 
@@ -99,12 +100,38 @@ func RefreshToken(ctx context.Context, c *app.RequestContext) {
 	var req platform.RefreshTokenRequest
 	err = c.BindAndValidate(&req)
 	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+		c.JSON(consts.StatusBadRequest, &v1.LoginResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(platform.RefreshTokenResponse)
+	accessToken, refreshToken, err := service.RefreshToken(ctx, req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, service.ErrTokenExpired) {
+			c.JSON(consts.StatusUnauthorized, &v1.RefreshTokenResponse{
+				Base: response.Error(response.CodeTokenExpired),
+			})
+			return
+		}
+		if errors.Is(err, service.ErrTokenInvalid) {
+			c.JSON(consts.StatusUnauthorized, &v1.RefreshTokenResponse{
+				Base: response.Error(response.CodeTokenInvalid),
+			})
+			return
+		}
+		log.Printf("[用户模块][刷新令牌] 刷新失败: %v", err)
+		c.JSON(consts.StatusInternalServerError, &v1.RefreshTokenResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
 
+	resp := &v1.RefreshTokenResponse{
+		Base:         response.Success("刷新成功"),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
 	c.JSON(consts.StatusOK, resp)
 }
 
@@ -115,12 +142,39 @@ func GetUserInfo(ctx context.Context, c *app.RequestContext) {
 	var req platform.GetUserInfoRequest
 	err = c.BindAndValidate(&req)
 	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+		c.JSON(consts.StatusBadRequest, &v1.GetUserInfoResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 
-	resp := new(platform.GetUserInfoResponse)
+	userID, err := parser.UserID(req.UserId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &v1.GetUserInfoResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
 
+	user, err := service.GetUserInfo(ctx, userID)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &v1.GetUserInfoResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		log.Printf("[用户模块][获取用户信息] 查询失败 user_id=%d: %v", userID, err)
+		c.JSON(consts.StatusInternalServerError, &v1.GetUserInfoResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	resp := &v1.GetUserInfoResponse{
+		Base: response.Success("获取用户信息成功"),
+		Data: user,
+	}
 	c.JSON(consts.StatusOK, resp)
 }
 

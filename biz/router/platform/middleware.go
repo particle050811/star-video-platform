@@ -32,7 +32,7 @@ func _uploadavatarMw() []app.HandlerFunc {
 }
 
 func _getuserinfoMw() []app.HandlerFunc {
-	return []app.HandlerFunc{middleware.JWTAuth()}
+	return nil
 }
 
 func _loginMw() []app.HandlerFunc {

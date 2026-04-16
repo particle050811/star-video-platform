@@ -16,3 +16,11 @@ func GetUserByUsername(ctx context.Context, username string) (*model.User, error
 	}
 	return &user, nil
 }
+
+func GetUserByID(ctx context.Context, userID uint) (*model.User, error) {
+	var user model.User
+	if err := DB.WithContext(ctx).First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
