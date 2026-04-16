@@ -23,7 +23,9 @@ func Register(ctx context.Context, c *app.RequestContext) {
 	var req platform.RegisterRequest
 	err = c.BindAndValidate(&req)
 	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+		c.JSON(consts.StatusBadRequest, &v1.RegisterResponse{
+			Base: response.ParamError(err.Error()),
+		})
 		return
 	}
 

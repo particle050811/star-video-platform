@@ -13,6 +13,49 @@
    hz update --idl idl/relation.proto --proto_path=.
    ```
 
+### 当前项目目录结构
+
+```text
+.
+├── AGENTS.md
+├── main.go
+├── router.go
+├── router_gen.go
+├── build.sh
+├── go.mod
+├── go.sum
+├── .env
+├── .env.example
+├── biz
+│   ├── dal
+│   │   ├── db
+│   │   ├── model
+│   │   └── rdb
+│   ├── handler
+│   │   ├── ping.go
+│   │   └── platform
+│   ├── model
+│   │   ├── api
+│   │   └── platform
+│   ├── repository
+│   │   └── user_repo.go
+│   ├── router
+│   │   ├── platform
+│   │   └── register.go
+│   └── service
+│       ├── errors.go
+│       └── user_service.go
+├── idl
+│   ├── api.proto
+│   ├── common.proto
+│   └── user.proto
+├── pkg
+│   └── response
+│       └── response.go
+└── script
+    └── bootstrap.sh
+```
+
 ### Git 提交规范
 
 - 使用 Conventional Commits 风格前缀，并使用中文提交信息
