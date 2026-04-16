@@ -6,32 +6,34 @@ import (
 
 // 业务错误码定义
 const (
-	CodeSuccess       = 200
-	CodeParamError    = 400
-	CodeUnauthorized  = 401
-	CodeForbidden     = 403
-	CodeNotFound      = 404
-	CodeUserExists    = 1001
-	CodeUserNotFound  = 1002
-	CodePasswordWrong = 1003
-	CodeTokenExpired  = 1004
-	CodeTokenInvalid  = 1005
-	CodeInternalError = 500
+	CodeSuccess               = 200
+	CodeParamError            = 400
+	CodeUnauthorized          = 401
+	CodeForbidden             = 403
+	CodeNotFound              = 404
+	CodeUserExists            = 1001
+	CodeUserNotFound          = 1002
+	CodePasswordWrong         = 1003
+	CodeTokenExpired          = 1004
+	CodeTokenInvalid          = 1005
+	CodeUnsupportedAvatarType = 1006
+	CodeInternalError         = 500
 )
 
 // 错误信息映射
 var codeMsg = map[int32]string{
-	CodeSuccess:       "成功",
-	CodeParamError:    "参数错误",
-	CodeUnauthorized:  "未授权",
-	CodeForbidden:     "禁止访问",
-	CodeNotFound:      "资源不存在",
-	CodeUserExists:    "用户名已存在",
-	CodeUserNotFound:  "用户不存在",
-	CodePasswordWrong: "密码错误",
-	CodeTokenExpired:  "令牌已过期",
-	CodeTokenInvalid:  "令牌无效",
-	CodeInternalError: "服务器内部错误",
+	CodeSuccess:               "成功",
+	CodeParamError:            "参数错误",
+	CodeUnauthorized:          "未授权",
+	CodeForbidden:             "禁止访问",
+	CodeNotFound:              "资源不存在",
+	CodeUserExists:            "用户名已存在",
+	CodeUserNotFound:          "用户不存在",
+	CodePasswordWrong:         "密码错误",
+	CodeTokenExpired:          "令牌已过期",
+	CodeTokenInvalid:          "令牌无效",
+	CodeUnsupportedAvatarType: "不支持的头像文件类型",
+	CodeInternalError:         "服务器内部错误",
 }
 
 // Success 创建成功响应

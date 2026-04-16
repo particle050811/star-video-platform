@@ -75,3 +75,11 @@ func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
 		AvatarUrl: user.AvatarURL,
 	}, nil
 }
+
+func UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error {
+	err := db.UpdateUserAvatar(ctx, userID, avatarURL)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return ErrUserNotFound
+	}
+	return err
+}

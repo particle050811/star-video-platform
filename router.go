@@ -5,11 +5,13 @@ package main
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	handler "video-platform/biz/handler"
+	"video-platform/pkg/upload"
 )
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
 	r.GET("/ping", handler.Ping)
+	r.Static(upload.AvatarRoute, upload.AvatarDir)
 
 	// your code ...
 }

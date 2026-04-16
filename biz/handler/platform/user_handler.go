@@ -10,8 +10,10 @@ import (
 	"video-platform/biz/model/platform"
 	v1 "video-platform/biz/model/platform"
 	"video-platform/biz/service"
+	"video-platform/pkg/middleware"
 	"video-platform/pkg/parser"
 	"video-platform/pkg/response"
+	"video-platform/pkg/upload"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
@@ -181,15 +183,57 @@ func GetUserInfo(ctx context.Context, c *app.RequestContext) {
 // UploadAvatar .
 // @router /api/v1/user/avatar [POST]
 func UploadAvatar(ctx context.Context, c *app.RequestContext) {
-	var err error
-	var req platform.UploadAvatarRequest
-	err = c.BindAndValidate(&req)
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	file, err := c.FormFile("avatar")
 	if err != nil {
-		c.String(consts.StatusBadRequest, err.Error())
+		c.JSON(consts.StatusBadRequest, &v1.UploadAvatarResponse{
+			Base: response.ParamError("缺少头像文件 avatar"),
+		})
 		return
 	}
 
-	resp := new(platform.UploadAvatarResponse)
+	savePath, avatarURL, err := upload.PrepareAvatar(userID, file.Filename)
+	if err != nil {
+		if errors.Is(err, upload.ErrUnsupportedAvatarExt) {
+			c.JSON(consts.StatusBadRequest, &v1.UploadAvatarResponse{
+				Base: response.Error(response.CodeUnsupportedAvatarType),
+			})
+			return
+		}
+		log.Printf("[用户模块][上传头像] 准备头像上传失败 user_id=%d filename=%s: %v", userID, file.Filename, err)
+		c.JSON(consts.StatusInternalServerError, &v1.UploadAvatarResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
 
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		log.Printf("[用户模块][上传头像] 保存头像失败 user_id=%d filename=%s: %v", userID, file.Filename, err)
+		c.JSON(consts.StatusInternalServerError, &v1.UploadAvatarResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	err = service.UpdateUserAvatar(ctx, userID, avatarURL)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(consts.StatusNotFound, &v1.UploadAvatarResponse{
+				Base: response.Error(response.CodeUserNotFound),
+			})
+			return
+		}
+		log.Printf("[用户模块][上传头像] 更新头像地址失败 user_id=%d avatar_url=%s: %v", userID, avatarURL, err)
+		c.JSON(consts.StatusInternalServerError, &v1.UploadAvatarResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	resp := &platform.UploadAvatarResponse{
+		Base: response.Success("上传头像成功"),
+	}
 	c.JSON(consts.StatusOK, resp)
 }

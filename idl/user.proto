@@ -52,7 +52,6 @@ message UploadAvatarRequest {}
 
 message UploadAvatarResponse {
   BaseResponse base = 1;
-  User data = 2;
 }
 
 // RefreshTokenRequest: 使用 refresh_token 换取新的 access_token
