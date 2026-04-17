@@ -78,25 +78,23 @@ func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]Soci
 		return nil, 0, err
 	}
 
-	var users []SocialUser
+	users := make([]SocialUser, 0)
 	if total == 0 {
 		return users, 0, nil
 	}
 
-	err := DB.WithContext(ctx).
-		Table("relations AS r").
-		Select("u.id, u.username, u.avatar_url").
-		Joins("JOIN users AS u ON u.id = r.to_user_id").
-		Where("r.from_user_id = ?", userID).
-		Order("r.id DESC").
+	var toUserIDs []uint
+	err := DB.WithContext(ctx).Model(&model.Relation{}).
+		Where("from_user_id = ?", userID).
+		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
-		Scan(&users).Error
+		Pluck("to_user_id", &toUserIDs).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return users, total, nil
+	return listSocialUsersByIDs(ctx, toUserIDs, total)
 }
 
 func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]SocialUser, int64, error) {
@@ -107,25 +105,23 @@ func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]Socia
 		return nil, 0, err
 	}
 
-	var users []SocialUser
+	users := make([]SocialUser, 0)
 	if total == 0 {
 		return users, 0, nil
 	}
 
-	err := DB.WithContext(ctx).
-		Table("relations AS r").
-		Select("u.id, u.username, u.avatar_url").
-		Joins("JOIN users AS u ON u.id = r.from_user_id").
-		Where("r.to_user_id = ?", userID).
-		Order("r.id DESC").
+	var fromUserIDs []uint
+	err := DB.WithContext(ctx).Model(&model.Relation{}).
+		Where("to_user_id = ?", userID).
+		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
-		Scan(&users).Error
+		Pluck("from_user_id", &fromUserIDs).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return users, total, nil
+	return listSocialUsersByIDs(ctx, fromUserIDs, total)
 }
 
 func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]SocialUser, int64, error) {
@@ -139,23 +135,41 @@ func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]SocialU
 		return nil, 0, err
 	}
 
-	var users []SocialUser
+	users := make([]SocialUser, 0)
 	if total == 0 {
 		return users, 0, nil
 	}
 
+	var friendIDs []uint
 	err := DB.WithContext(ctx).
 		Table("relations AS r1").
-		Select("u.id, u.username, u.avatar_url").
+		Select("r1.to_user_id").
 		Joins("JOIN relations AS r2 ON r1.to_user_id = r2.from_user_id AND r1.from_user_id = r2.to_user_id").
-		Joins("JOIN users AS u ON u.id = r1.to_user_id").
 		Where("r1.from_user_id = ?", userID).
 		Order("r1.id DESC").
 		Offset(offset).
 		Limit(limit).
-		Scan(&users).Error
+		Scan(&friendIDs).Error
 	if err != nil {
 		return nil, 0, err
+	}
+
+	return listSocialUsersByIDs(ctx, friendIDs, total)
+}
+
+func listSocialUsersByIDs(ctx context.Context, userIDs []uint, total int64) ([]SocialUser, int64, error) {
+	userSnapshots, err := ListUserSnapshotsByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]SocialUser, 0, len(userSnapshots))
+	for _, user := range userSnapshots {
+		users = append(users, SocialUser{
+			ID:        user.ID,
+			Username:  user.Username,
+			AvatarURL: user.AvatarURL,
+		})
 	}
 
 	return users, total, nil

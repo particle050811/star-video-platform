@@ -180,21 +180,8 @@ func GetUserInfo(ctx context.Context, c *app.RequestContext) {
 // UploadAvatar .
 // @router /api/v1/user/avatar [POST]
 func UploadAvatar(ctx context.Context, c *app.RequestContext) {
-	userIDValue, ok := c.Get(middleware.ContextUserID)
-	if !ok {
-		c.JSON(consts.StatusUnauthorized, &user.UploadAvatarResponse{
-			Base: response.Unauthorized("未登录或登录已失效"),
-		})
-		return
-	}
-
-	userID, ok := userIDValue.(uint)
-	if !ok {
-		c.JSON(consts.StatusUnauthorized, &user.UploadAvatarResponse{
-			Base: response.Unauthorized("无效的用户身份"),
-		})
-		return
-	}
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
 
 	file, err := c.FormFile("avatar")
 	if err != nil {

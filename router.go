@@ -12,6 +12,8 @@ import (
 func customizedRegister(r *server.Hertz) {
 	r.GET("/ping", handler.Ping)
 	r.Static(upload.AvatarRoute, upload.AvatarDir)
+	r.Static(upload.VideoRoute, upload.VideoDir)
+	r.Static(upload.VideoCoverURL, upload.VideoCoverDir)
 
 	// your code ...
 }

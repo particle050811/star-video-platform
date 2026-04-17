@@ -78,7 +78,7 @@ func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
 	}, nil
 }
 
-func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) error {
+func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) (err error) {
 	user, err := db.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -87,7 +87,15 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 		return err
 	}
 
-	savePath, avatarURL, err := upload.PrepareAvatar(userID, file.Filename)
+	var avatarURL string
+	defer func() {
+		if err != nil {
+			_ = upload.RemoveAvatar(avatarURL)
+		}
+	}()
+
+	var savePath string
+	savePath, avatarURL, err = upload.PrepareAvatar(userID, file.Filename)
 	if err != nil {
 		if errors.Is(err, upload.ErrUnsupportedAvatarExt) {
 			return ErrUnsupportedAvatarExt
@@ -100,7 +108,6 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 	}
 
 	if err := db.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
-		_ = upload.RemoveAvatar(avatarURL)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}

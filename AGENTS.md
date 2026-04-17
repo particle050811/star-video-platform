@@ -56,6 +56,14 @@
     └── bootstrap.sh
 ```
 
+### Handler 编写约定
+
+- 对已经挂载鉴权中间件的路由，例如 `middleware.JWTAuth()`，handler 内不要重复校验 `c.Get(middleware.ContextUserID)` 是否存在
+- 这类 handler 统一按当前项目既有写法处理：直接读取上下文中的 `user_id`，例如 `userIDValue, _ := c.Get(middleware.ContextUserID)`，再做类型断言
+- `middleware.JWTAuth()` 已经通过 `c.Set(ContextUserID, claims.UserID)` 写入用户身份；当前项目里 `claims.UserID` 的类型是 `uint`，不是 `uint64`
+- 因此已挂鉴权中间件的 handler 内不要再补 `ok` 判断、未登录分支，或“防御性”类型重复校验；默认直接使用 `userIDValue.(uint)`
+- 只有未挂鉴权中间件的路由，才允许在 handler 内自行处理未登录分支
+
 ### Git 提交规范
 
 - 使用 Conventional Commits 风格前缀，并使用中文提交信息

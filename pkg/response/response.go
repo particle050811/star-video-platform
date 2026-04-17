@@ -20,6 +20,11 @@ const (
 	CodeCannotFollowSelf      = 1007
 	CodeFollowNotFound        = 1008
 	CodeAlreadyFollowed       = 1009
+	CodeVideoNotFound         = 1010
+	CodeVideoTitleRequired    = 1011
+	CodeVideoFileRequired     = 1012
+	CodeUnsupportedVideoType  = 1013
+	CodeUnsupportedCoverType  = 1014
 	CodeInternalError         = 500
 )
 
@@ -39,6 +44,11 @@ var codeMsg = map[int32]string{
 	CodeCannotFollowSelf:      "不能关注自己",
 	CodeFollowNotFound:        "关注关系不存在",
 	CodeAlreadyFollowed:       "已经关注该用户",
+	CodeVideoNotFound:         "视频不存在",
+	CodeVideoTitleRequired:    "视频标题不能为空",
+	CodeVideoFileRequired:     "视频文件不能为空",
+	CodeUnsupportedVideoType:  "不支持的视频文件类型",
+	CodeUnsupportedCoverType:  "不支持的视频封面文件类型",
 	CodeInternalError:         "服务器内部错误",
 }
 

@@ -61,6 +61,8 @@ func autoMigrate(db *gorm.DB) {
 	err := db.AutoMigrate(
 		&model.User{},
 		&model.Relation{},
+		&model.Video{},
+		&model.Comment{},
 	)
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)
