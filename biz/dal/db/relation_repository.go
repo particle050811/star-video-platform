@@ -7,12 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type SocialUser struct {
-	ID        uint
-	Username  string
-	AvatarURL string
-}
-
 func FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
 	return DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&model.Relation{
@@ -70,7 +64,7 @@ func UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) 
 	return deleted, err
 }
 
-func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]SocialUser, int64, error) {
+func ListFollowingIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
 	var total int64
 	if err := DB.WithContext(ctx).Model(&model.Relation{}).
 		Where("from_user_id = ?", userID).
@@ -78,26 +72,25 @@ func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]Soci
 		return nil, 0, err
 	}
 
-	users := make([]SocialUser, 0)
+	userIDs := make([]uint, 0)
 	if total == 0 {
-		return users, 0, nil
+		return userIDs, 0, nil
 	}
 
-	var toUserIDs []uint
 	err := DB.WithContext(ctx).Model(&model.Relation{}).
 		Where("from_user_id = ?", userID).
 		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
-		Pluck("to_user_id", &toUserIDs).Error
+		Pluck("to_user_id", &userIDs).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return listSocialUsersByIDs(ctx, toUserIDs, total)
+	return userIDs, total, nil
 }
 
-func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]SocialUser, int64, error) {
+func ListFollowerIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
 	var total int64
 	if err := DB.WithContext(ctx).Model(&model.Relation{}).
 		Where("to_user_id = ?", userID).
@@ -105,26 +98,25 @@ func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]Socia
 		return nil, 0, err
 	}
 
-	users := make([]SocialUser, 0)
+	userIDs := make([]uint, 0)
 	if total == 0 {
-		return users, 0, nil
+		return userIDs, 0, nil
 	}
 
-	var fromUserIDs []uint
 	err := DB.WithContext(ctx).Model(&model.Relation{}).
 		Where("to_user_id = ?", userID).
 		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
-		Pluck("from_user_id", &fromUserIDs).Error
+		Pluck("from_user_id", &userIDs).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return listSocialUsersByIDs(ctx, fromUserIDs, total)
+	return userIDs, total, nil
 }
 
-func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]SocialUser, int64, error) {
+func ListFriendIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
 	baseQuery := DB.WithContext(ctx).
 		Table("relations AS r1").
 		Joins("JOIN relations AS r2 ON r1.to_user_id = r2.from_user_id AND r1.from_user_id = r2.to_user_id").
@@ -135,42 +127,22 @@ func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]SocialU
 		return nil, 0, err
 	}
 
-	users := make([]SocialUser, 0)
+	userIDs := make([]uint, 0)
 	if total == 0 {
-		return users, 0, nil
+		return userIDs, 0, nil
 	}
 
-	var friendIDs []uint
 	err := DB.WithContext(ctx).
 		Table("relations AS r1").
-		Select("r1.to_user_id").
 		Joins("JOIN relations AS r2 ON r1.to_user_id = r2.from_user_id AND r1.from_user_id = r2.to_user_id").
 		Where("r1.from_user_id = ?", userID).
 		Order("r1.id DESC").
 		Offset(offset).
 		Limit(limit).
-		Scan(&friendIDs).Error
+		Pluck("r1.to_user_id", &userIDs).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return listSocialUsersByIDs(ctx, friendIDs, total)
-}
-
-func listSocialUsersByIDs(ctx context.Context, userIDs []uint, total int64) ([]SocialUser, int64, error) {
-	userSnapshots, err := ListUserSnapshotsByIDs(ctx, userIDs)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	users := make([]SocialUser, 0, len(userSnapshots))
-	for _, user := range userSnapshots {
-		users = append(users, SocialUser{
-			ID:        user.ID,
-			Username:  user.Username,
-			AvatarURL: user.AvatarURL,
-		})
-	}
-
-	return users, total, nil
+	return userIDs, total, nil
 }

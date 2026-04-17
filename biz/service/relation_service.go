@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"video-platform/biz/dal/db"
 	relation "video-platform/biz/model/relation"
+	"video-platform/biz/repository"
 	"video-platform/pkg/pagination"
 
 	"gorm.io/gorm"
@@ -21,7 +21,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 		return ErrCannotFollowSelf
 	}
 
-	if _, err := db.GetUserByID(ctx, toUserID); err != nil {
+	if _, err := repository.GetUserByID(ctx, toUserID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
@@ -30,7 +30,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 
 	switch actionType {
 	case relationActionFollow:
-		if err := db.FollowUser(ctx, fromUserID, toUserID); err != nil {
+		if err := repository.FollowUser(ctx, fromUserID, toUserID); err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
 				return ErrAlreadyFollowed
 			}
@@ -38,7 +38,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 		}
 		return nil
 	case relationActionUnfollow:
-		deleted, err := db.UnfollowUser(ctx, fromUserID, toUserID)
+		deleted, err := repository.UnfollowUser(ctx, fromUserID, toUserID)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 }
 
 func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := db.GetUserByID(ctx, userID); err != nil {
+	if _, err := repository.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -60,7 +60,7 @@ func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := db.ListFollowings(ctx, userID, offset, limit)
+	users, total, err := repository.ListFollowings(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (
 }
 
 func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := db.GetUserByID(ctx, userID); err != nil {
+	if _, err := repository.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -77,7 +77,7 @@ func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := db.ListFollowers(ctx, userID, offset, limit)
+	users, total, err := repository.ListFollowers(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*
 }
 
 func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := db.GetUserByID(ctx, userID); err != nil {
+	if _, err := repository.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -94,7 +94,7 @@ func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*re
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := db.ListFriends(ctx, userID, offset, limit)
+	users, total, err := repository.ListFriends(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*re
 	return buildSocialList(users, total), nil
 }
 
-func buildSocialList(users []db.SocialUser, total int64) *relation.SocialListWithTotal {
+func buildSocialList(users []repository.UserSnapshot, total int64) *relation.SocialListWithTotal {
 	items := make([]*relation.SocialProfile, 0, len(users))
 	for _, user := range users {
 		items = append(items, &relation.SocialProfile{

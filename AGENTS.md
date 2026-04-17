@@ -64,6 +64,15 @@
 - 因此已挂鉴权中间件的 handler 内不要再补 `ok` 判断、未登录分支，或“防御性”类型重复校验；默认直接使用 `userIDValue.(uint)`
 - 只有未挂鉴权中间件的路由，才允许在 handler 内自行处理未登录分支
 
+### 分层约定
+
+- 调用链路统一按 `handler -> service -> repository -> dal/db + dal/rdb`
+- `biz/dal/db` 只放 MySQL 访问代码，包括 CRUD、SQL 查询、事务，不要搬到 `repository/mysql`
+- `biz/dal/rdb` 只放 Redis 访问代码，包括缓存读写、key 操作、分布式锁等
+- `biz/repository` 负责组合 MySQL 和 Redis，处理缓存命中、回源、写回、失效，以及跨存储的数据组装
+- `biz/service` 负责业务规则编排，原则上不要直接调用 `dal/db` 或 `dal/rdb`；需要存储访问时通过 `biz/repository`
+- 后续引入缓存时优先修改 `biz/repository`，不要让 service 感知 Redis 细节
+
 ### Git 提交规范
 
 - 使用 Conventional Commits 风格前缀，并使用中文提交信息

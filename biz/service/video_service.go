@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/video"
+	"video-platform/biz/repository"
 	"video-platform/pkg/pagination"
 	"video-platform/pkg/upload"
 
@@ -24,7 +24,7 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 		return ErrVideoFileRequired
 	}
 
-	if _, err := db.GetUserByID(ctx, userID); err != nil {
+	if _, err := repository.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
@@ -67,7 +67,7 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 		}
 	}
 
-	if err := db.CreateVideo(ctx, &model.Video{
+	if err := repository.CreateVideo(ctx, &model.Video{
 		UserID:      userID,
 		VideoURL:    videoURL,
 		CoverURL:    coverURL,
@@ -81,7 +81,7 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 }
 
 func ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int32) (*v1.VideoList, error) {
-	if _, err := db.GetUserByID(ctx, userID); err != nil {
+	if _, err := repository.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -89,7 +89,7 @@ func ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	videos, err := db.ListVideosByUserID(ctx, userID, offset, limit)
+	videos, err := repository.ListVideosByUserID(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,14 +102,14 @@ func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoLi
 
 	var userIDs []uint
 	if username := strings.TrimSpace(req.Username); username != "" {
-		foundUserIDs, err := db.ListUserIDsByUsername(ctx, username)
+		foundUserIDs, err := repository.ListUserIDsByUsername(ctx, username)
 		if err != nil {
 			return nil, err
 		}
 		userIDs = foundUserIDs
 	}
 
-	videos, err := db.SearchVideos(ctx, db.VideoQuery{
+	videos, err := repository.SearchVideos(ctx, repository.VideoQuery{
 		Keywords: req.Keywords,
 		UserIDs:  userIDs,
 		FromDate: req.FromDate,
@@ -126,7 +126,7 @@ func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoLi
 }
 
 func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int32) (*v1.VideoCommentList, error) {
-	if _, err := db.GetVideoByID(ctx, videoID); err != nil {
+	if _, err := repository.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrVideoNotFound
 		}
@@ -134,7 +134,7 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	comments, total, err := db.ListVideoComments(ctx, videoID, offset, limit)
+	comments, total, err := repository.ListVideoComments(ctx, videoID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +144,12 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 		commentUserIDs = append(commentUserIDs, item.UserID)
 	}
 
-	users, err := db.ListUserSnapshotsByIDs(ctx, commentUserIDs)
+	users, err := repository.ListUserSnapshotsByIDs(ctx, commentUserIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	userMap := make(map[uint]db.UserSnapshot, len(users))
+	userMap := make(map[uint]repository.UserSnapshot, len(users))
 	for _, user := range users {
 		userMap[user.ID] = user
 	}
@@ -176,7 +176,7 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 
 func GetHotVideos(ctx context.Context, pageNum, pageSize int32) (*v1.VideoList, error) {
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	videos, err := db.ListHotVideos(ctx, offset, limit)
+	videos, err := repository.ListHotVideos(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}

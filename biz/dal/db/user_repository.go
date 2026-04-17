@@ -3,16 +3,9 @@ package db
 import (
 	"context"
 	"video-platform/biz/dal/model"
-	"video-platform/pkg/constant"
 
 	"gorm.io/gorm"
 )
-
-type UserSnapshot struct {
-	ID        uint
-	Username  string
-	AvatarURL string
-}
 
 func CreateUser(ctx context.Context, user *model.User) error {
 	return DB.WithContext(ctx).Create(user).Error
@@ -48,37 +41,6 @@ func ListUsersByIDs(ctx context.Context, userIDs []uint) ([]model.User, error) {
 		return nil, err
 	}
 	return users, nil
-}
-
-func ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserSnapshot, error) {
-	users, err := ListUsersByIDs(ctx, userIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	userMap := make(map[uint]UserSnapshot, len(users))
-	for _, user := range users {
-		userMap[user.ID] = UserSnapshot{
-			ID:        user.ID,
-			Username:  user.Username,
-			AvatarURL: user.AvatarURL,
-		}
-	}
-
-	snapshots := make([]UserSnapshot, 0, len(userIDs))
-	for _, userID := range userIDs {
-		user, ok := userMap[userID]
-		if !ok {
-			user = UserSnapshot{
-				ID:        userID,
-				Username:  constant.DeletedUserName,
-				AvatarURL: "",
-			}
-		}
-		snapshots = append(snapshots, user)
-	}
-
-	return snapshots, nil
 }
 
 func GetUserByID(ctx context.Context, userID uint) (*model.User, error) {

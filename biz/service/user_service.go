@@ -5,9 +5,9 @@ import (
 	"errors"
 	"mime/multipart"
 	"strconv"
-	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/user"
+	"video-platform/biz/repository"
 	"video-platform/pkg/auth"
 	"video-platform/pkg/upload"
 
@@ -21,7 +21,7 @@ func Register(ctx context.Context, username, password string) error {
 		return err
 	}
 
-	if err := db.CreateUser(ctx, &model.User{
+	if err := repository.CreateUser(ctx, &model.User{
 		Username: username, Password: string(hashedPassword)}); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrUserExists
@@ -32,7 +32,7 @@ func Register(ctx context.Context, username, password string) error {
 }
 
 func Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
-	user, err := db.GetUserByUsername(ctx, username)
+	user, err := repository.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", "", ErrUserNotFound
@@ -63,7 +63,7 @@ func RefreshToken(ctx context.Context, refresh_token string) (accessToken, refre
 }
 
 func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
-	user, err := db.GetUserByID(ctx, userID)
+	user, err := repository.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -79,7 +79,7 @@ func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
 }
 
 func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) (err error) {
-	user, err := db.GetUserByID(ctx, userID)
+	user, err := repository.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
@@ -107,7 +107,7 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 		return err
 	}
 
-	if err := db.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
+	if err := repository.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
