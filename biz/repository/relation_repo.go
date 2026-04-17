@@ -3,17 +3,38 @@ package repository
 import (
 	"context"
 	"video-platform/biz/dal/db"
+	"video-platform/biz/dal/rdb"
 )
 
 func FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
-	return db.FollowUser(ctx, fromUserID, toUserID)
+	if err := db.FollowUser(ctx, fromUserID, toUserID); err != nil {
+		return err
+	}
+
+	deleteRelationCaches(ctx, fromUserID, toUserID)
+	return nil
 }
 
 func UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) {
-	return db.UnfollowUser(ctx, fromUserID, toUserID)
+	deleted, err := db.UnfollowUser(ctx, fromUserID, toUserID)
+	if err != nil {
+		return false, err
+	}
+	if deleted {
+		deleteRelationCaches(ctx, fromUserID, toUserID)
+	}
+	return deleted, nil
 }
 
-func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]UserSnapshot, int64, error) {
+func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
+	if cached, ok, err := rdb.GetRelationFollowingCache(ctx, userID, offset, limit); err == nil && ok {
+		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		return users, cached.Total, nil
+	}
+
 	userIDs, total, err := db.ListFollowingIDs(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, 0, err
@@ -24,10 +45,22 @@ func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]User
 		return nil, 0, err
 	}
 
+	_ = rdb.SetRelationFollowingCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+		UserIDs: userIDs,
+		Total:   total,
+	})
 	return users, total, nil
 }
 
-func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserSnapshot, int64, error) {
+func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
+	if cached, ok, err := rdb.GetRelationFollowerCache(ctx, userID, offset, limit); err == nil && ok {
+		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		return users, cached.Total, nil
+	}
+
 	userIDs, total, err := db.ListFollowerIDs(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, 0, err
@@ -38,10 +71,22 @@ func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserS
 		return nil, 0, err
 	}
 
+	_ = rdb.SetRelationFollowerCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+		UserIDs: userIDs,
+		Total:   total,
+	})
 	return users, total, nil
 }
 
-func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserSnapshot, int64, error) {
+func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
+	if cached, ok, err := rdb.GetRelationFriendCache(ctx, userID, offset, limit); err == nil && ok {
+		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		return users, cached.Total, nil
+	}
+
 	userIDs, total, err := db.ListFriendIDs(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, 0, err
@@ -52,5 +97,18 @@ func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserSna
 		return nil, 0, err
 	}
 
+	_ = rdb.SetRelationFriendCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+		UserIDs: userIDs,
+		Total:   total,
+	})
 	return users, total, nil
+}
+
+func deleteRelationCaches(ctx context.Context, fromUserID, toUserID uint) {
+	_ = rdb.DeleteFollowingCaches(ctx, fromUserID)
+	_ = rdb.DeleteFollowerCaches(ctx, toUserID)
+	_ = rdb.DeleteFriendCaches(ctx, fromUserID)
+	_ = rdb.DeleteFriendCaches(ctx, toUserID)
+	_ = rdb.DeleteUserProfileCache(ctx, fromUserID)
+	_ = rdb.DeleteUserProfileCache(ctx, toUserID)
 }

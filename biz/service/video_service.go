@@ -141,7 +141,7 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 		return nil, err
 	}
 
-	userMap := make(map[uint]repository.UserSnapshot, len(users))
+	userMap := make(map[uint]repository.UserProfile, len(users))
 	for _, user := range users {
 		userMap[user.ID] = user
 	}

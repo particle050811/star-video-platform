@@ -4,14 +4,31 @@ import (
 	"context"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
+	"video-platform/biz/dal/rdb"
 )
 
 func CreateVideo(ctx context.Context, video *model.Video) error {
-	return db.CreateVideo(ctx, video)
+	if err := db.CreateVideo(ctx, video); err != nil {
+		return err
+	}
+
+	_ = rdb.DeleteHotVideoCaches(ctx)
+	return nil
 }
 
 func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
-	return db.GetVideoByID(ctx, videoID)
+	var video model.Video
+	if ok, err := rdb.GetVideoDetailCache(ctx, videoID, &video); err == nil && ok {
+		return &video, nil
+	}
+
+	fetched, err := db.GetVideoByID(ctx, videoID)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = rdb.SetVideoDetailCache(ctx, videoID, fetched)
+	return fetched, nil
 }
 
 func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
@@ -31,5 +48,16 @@ func SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate
 }
 
 func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	return db.ListHotVideos(ctx, offset, limit)
+	var videos []model.Video
+	if ok, err := rdb.GetHotVideoCache(ctx, offset, limit, &videos); err == nil && ok {
+		return videos, nil
+	}
+
+	videos, err := db.ListHotVideos(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = rdb.SetHotVideoCache(ctx, offset, limit, videos)
+	return videos, nil
 }

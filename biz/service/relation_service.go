@@ -102,7 +102,7 @@ func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*re
 	return buildSocialList(users, total), nil
 }
 
-func buildSocialList(users []repository.UserSnapshot, total int64) *relation.SocialListWithTotal {
+func buildSocialList(users []repository.UserProfile, total int64) *relation.SocialListWithTotal {
 	items := make([]*relation.SocialProfile, 0, len(users))
 	for _, user := range users {
 		items = append(items, &relation.SocialProfile{
