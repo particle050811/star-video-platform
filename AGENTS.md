@@ -78,7 +78,9 @@
 - 使用 Conventional Commits 风格前缀，并使用中文提交信息
 - 提交标题格式：`<type>: <中文说明>`
 - 标题简洁明确，直接说明本次改动
-- 每次提交前至少要经过一次 subagent 审核；只有在 subagent 检查完毕后才允许提交
+- 每次提交前必须调用至少一个 subagent 对本次准备提交的暂存区改动做 review
+- 这里的 subagent 指当前 Codex 工作流中用于审查改动的代理；人工自查不能替代这一步
+- subagent 返回 `no findings` 或明确列出 findings，都视为已完成审核；如果审核流程失败或未返回结果，则不允许执行 `git commit`
 
 常用前缀：
 
