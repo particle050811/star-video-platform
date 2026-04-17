@@ -9,6 +9,7 @@ import (
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/video"
 	"video-platform/biz/repository"
+	"video-platform/pkg/parser"
 	"video-platform/pkg/upload"
 
 	"gorm.io/gorm"
@@ -23,7 +24,7 @@ type fakeVideoRepository struct {
 	searchVideosFn          func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error)
 	listVideoCommentsFn     func(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
 	listUserSnapshotsFn     func(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
-	listHotVideosFn         func(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error)
+	listHotVideosFn         func(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error)
 }
 
 func (f fakeVideoRepository) CreateVideo(ctx context.Context, video *model.Video) error {
@@ -58,7 +59,7 @@ func (f fakeVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userIDs
 	return f.listUserSnapshotsFn(ctx, userIDs)
 }
 
-func (f fakeVideoRepository) ListHotVideos(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error) {
+func (f fakeVideoRepository) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error) {
 	return f.listHotVideosFn(ctx, cursor, limit)
 }
 
@@ -327,6 +328,55 @@ func TestVideoServiceSearchVideosUsesUsernameFilter(t *testing.T) {
 	}
 	if len(got.Items) != 1 || got.Items[0].Id != "9" {
 		t.Fatalf("unexpected response: %+v", got)
+	}
+}
+
+func TestVideoServiceGetHotVideosBuildsTokenCursorResponse(t *testing.T) {
+	wantCursor := parser.HotVideoCursorValue{LikeCount: 100, VisitCount: 200, ID: 9}
+	wantToken, err := parser.EncodeHotVideoCursor(wantCursor)
+	if err != nil {
+		t.Fatalf("failed to encode cursor: %v", err)
+	}
+
+	svc := videoService{
+		repo: fakeVideoRepository{
+			listHotVideosFn: func(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error) {
+				if cursor != wantCursor {
+					t.Fatalf("expected cursor %+v, got %+v", wantCursor, cursor)
+				}
+				if limit != 20 {
+					t.Fatalf("expected limit %d, got %d", 20, limit)
+				}
+				return &repository.VideoListResult{
+					Items: []model.Video{{
+						ID:         9,
+						UserID:     3,
+						Title:      "hot",
+						LikeCount:  100,
+						VisitCount: 200,
+						CreatedAt:  time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC),
+						UpdatedAt:  time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC),
+					}},
+					NextCursorToken: wantToken,
+					HasMore:         true,
+				}, nil
+			},
+		},
+	}
+
+	got, err := svc.GetHotVideos(context.Background(), wantCursor, 0)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if got.NextCursor != wantToken || !got.HasMore {
+		t.Fatalf("unexpected cursor response: %+v", got)
+	}
+	parsed, err := parser.ParseHotVideoCursor(got.NextCursor)
+	if err != nil {
+		t.Fatalf("expected parseable cursor, got %v", err)
+	}
+	if parsed != wantCursor {
+		t.Fatalf("expected parsed cursor %+v, got %+v", wantCursor, parsed)
 	}
 }
 

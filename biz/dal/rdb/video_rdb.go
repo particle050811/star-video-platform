@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"video-platform/pkg/parser"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -30,8 +31,8 @@ func hotVideoCacheVersionKey() string {
 	return "video:hot:version"
 }
 
-func hotVideoCacheKey(version int64, cursor uint, limit int) string {
-	return fmt.Sprintf("video:hot:v%d:%d:%d", version, cursor, limit)
+func hotVideoCacheKey(version int64, cursor parser.HotVideoCursorValue, limit int) string {
+	return fmt.Sprintf("video:hot:v%d:%d:%d:%d:%d", version, cursor.LikeCount, cursor.VisitCount, cursor.ID, limit)
 }
 
 func videoDetailCacheKey(videoID uint) string {
@@ -70,7 +71,7 @@ func (v VideoCache) GetHotVideoCacheVersion(ctx context.Context) (int64, error) 
 	return version, nil
 }
 
-func (v VideoCache) GetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error) {
+func (v VideoCache) GetHotVideoCache(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, dest any) (bool, error) {
 	client := v.redisClient()
 	if client == nil {
 		return false, nil
@@ -112,7 +113,7 @@ func (v VideoCache) GetVideoDetailCache(ctx context.Context, videoID uint, dest 
 	return true, nil
 }
 
-func (v VideoCache) SetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, value any) error {
+func (v VideoCache) SetHotVideoCache(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, value any) error {
 	client := v.redisClient()
 	if client == nil {
 		return nil
@@ -162,7 +163,7 @@ func GetHotVideoCacheVersion(ctx context.Context) (int64, error) {
 	return DefaultVideoCache.GetHotVideoCacheVersion(ctx)
 }
 
-func GetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error) {
+func GetHotVideoCache(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, dest any) (bool, error) {
 	return DefaultVideoCache.GetHotVideoCache(ctx, version, cursor, limit, dest)
 }
 
@@ -170,7 +171,7 @@ func GetVideoDetailCache(ctx context.Context, videoID uint, dest any) (bool, err
 	return DefaultVideoCache.GetVideoDetailCache(ctx, videoID, dest)
 }
 
-func SetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, value any) error {
+func SetHotVideoCache(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, value any) error {
 	return DefaultVideoCache.SetHotVideoCache(ctx, version, cursor, limit, value)
 }
 

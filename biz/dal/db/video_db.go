@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 	"video-platform/biz/dal/model"
+	"video-platform/pkg/parser"
 
 	"gorm.io/gorm"
 )
@@ -95,11 +96,22 @@ func (v VideoDB) SearchVideos(ctx context.Context, params VideoQuery) ([]model.V
 	return videos, nil
 }
 
-func (v VideoDB) ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
+func (v VideoDB) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) ([]model.Video, error) {
 	query := v.gormDB().WithContext(ctx).Model(&model.Video{})
+	if cursor.ID > 0 {
+		query = query.Where(
+			"like_count < ? OR (like_count = ? AND visit_count < ?) OR (like_count = ? AND visit_count = ? AND id < ?)",
+			cursor.LikeCount,
+			cursor.LikeCount,
+			cursor.VisitCount,
+			cursor.LikeCount,
+			cursor.VisitCount,
+			cursor.ID,
+		)
+	}
 
 	videos := make([]model.Video, 0)
-	if err := query.Order("like_count DESC, visit_count DESC, id DESC").Offset(int(cursor)).Limit(limit).Find(&videos).Error; err != nil {
+	if err := query.Order("like_count DESC, visit_count DESC, id DESC").Limit(limit).Find(&videos).Error; err != nil {
 		return nil, err
 	}
 
@@ -122,6 +134,6 @@ func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error)
 	return Videos.SearchVideos(ctx, params)
 }
 
-func ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
+func ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) ([]model.Video, error) {
 	return Videos.ListHotVideos(ctx, cursor, limit)
 }

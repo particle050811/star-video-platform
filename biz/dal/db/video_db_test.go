@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 	"video-platform/biz/dal/model"
+	"video-platform/pkg/parser"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"gorm.io/driver/mysql"
@@ -116,11 +117,38 @@ func TestVideoDBListHotVideos(t *testing.T) {
 		WithArgs(20).
 		WillReturnRows(rows)
 
-	got, err := videoDB.ListHotVideos(context.Background(), 0, 20)
+	got, err := videoDB.ListHotVideos(context.Background(), parser.HotVideoCursorValue{}, 20)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 	if len(got) != 1 || got[0].Title != "hot" {
+		t.Fatalf("unexpected result: %+v", got)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
+func TestVideoDBListHotVideosWithCursor(t *testing.T) {
+	videoDB, mock, cleanup := newMockVideoDB(t)
+	defer cleanup()
+
+	rows := sqlmock.NewRows([]string{
+		"id", "user_id", "video_url", "cover_url", "title", "description",
+		"visit_count", "like_count", "comment_count", "created_at", "updated_at",
+	}).
+		AddRow(7, 2, "/static/videos/a.mp4", "", "hot", "", 20, 10, 8, time.Now(), time.Now())
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `videos` WHERE (like_count < ? OR (like_count = ? AND visit_count < ?) OR (like_count = ? AND visit_count = ? AND id < ?)) AND `videos`.`deleted_at` IS NULL ORDER BY like_count DESC, visit_count DESC, id DESC LIMIT ?")).
+		WithArgs(int64(10), int64(10), int64(20), int64(10), int64(20), uint(7), 21).
+		WillReturnRows(rows)
+
+	got, err := videoDB.ListHotVideos(context.Background(), parser.HotVideoCursorValue{LikeCount: 10, VisitCount: 20, ID: 7}, 21)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(got) != 1 || got[0].ID != 7 {
 		t.Fatalf("unexpected result: %+v", got)
 	}
 

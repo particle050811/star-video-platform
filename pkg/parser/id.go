@@ -1,9 +1,17 @@
 package parser
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strconv"
 )
+
+type HotVideoCursorValue struct {
+	LikeCount  int64 `json:"like_count"`
+	VisitCount int64 `json:"visit_count"`
+	ID         uint  `json:"id"`
+}
 
 func UserID(rawUserID string) (uint, error) {
 	if rawUserID == "" {
@@ -42,4 +50,34 @@ func Cursor(rawCursor string) (uint, error) {
 	}
 
 	return uint(parsedCursor), nil
+}
+
+func ParseHotVideoCursor(rawCursor string) (HotVideoCursorValue, error) {
+	if rawCursor == "" {
+		return HotVideoCursorValue{}, nil
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(rawCursor)
+	if err != nil {
+		return HotVideoCursorValue{}, errors.New("cursor 格式错误")
+	}
+
+	var cursor HotVideoCursorValue
+	if err := json.Unmarshal(payload, &cursor); err != nil {
+		return HotVideoCursorValue{}, errors.New("cursor 格式错误")
+	}
+	if cursor.ID == 0 || cursor.LikeCount < 0 || cursor.VisitCount < 0 {
+		return HotVideoCursorValue{}, errors.New("cursor 格式错误")
+	}
+
+	return cursor, nil
+}
+
+func EncodeHotVideoCursor(cursor HotVideoCursorValue) (string, error) {
+	payload, err := json.Marshal(cursor)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(payload), nil
 }

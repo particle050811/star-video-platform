@@ -11,6 +11,7 @@ import (
 	v1 "video-platform/biz/model/video"
 	"video-platform/biz/repository"
 	"video-platform/pkg/pagination"
+	"video-platform/pkg/parser"
 	"video-platform/pkg/upload"
 
 	"gorm.io/gorm"
@@ -25,7 +26,7 @@ type videoRepository interface {
 	SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error)
 	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
 	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
-	ListHotVideos(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error)
+	ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error)
 }
 
 type videoUploadProvider interface {
@@ -70,7 +71,7 @@ func (defaultVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userID
 	return repository.ListUserSnapshotsByIDs(ctx, userIDs)
 }
 
-func (defaultVideoRepository) ListHotVideos(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error) {
+func (defaultVideoRepository) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error) {
 	return repository.ListHotVideos(ctx, cursor, limit)
 }
 
@@ -259,13 +260,13 @@ func (s videoService) ListVideoComments(ctx context.Context, videoID uint, curso
 	}, nil
 }
 
-func (s videoService) GetHotVideos(ctx context.Context, cursor uint, limit int32) (*v1.VideoList, error) {
+func (s videoService) GetHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int32) (*v1.VideoList, error) {
 	result, err := s.repo.ListHotVideos(ctx, cursor, pagination.NormalizeLimit(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	return buildVideoList(result), nil
+	return buildHotVideoList(result), nil
 }
 
 func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
@@ -284,6 +285,14 @@ func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
 		NextCursor: nextCursor,
 		HasMore:    result.HasMore,
 	}
+}
+
+func buildHotVideoList(result *repository.VideoListResult) *v1.VideoList {
+	data := buildVideoList(result)
+	if result.HasMore {
+		data.NextCursor = result.NextCursorToken
+	}
+	return data
 }
 
 func buildVideo(video model.Video) *v1.Video {

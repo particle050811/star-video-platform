@@ -222,7 +222,7 @@ func GetHotVideos(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	cursor, err := parser.Cursor(req.Cursor)
+	cursor, err := parser.ParseHotVideoCursor(req.Cursor)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &video.GetHotVideosResponse{
 			Base: response.ParamError(err.Error()),
