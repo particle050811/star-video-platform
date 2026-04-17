@@ -28,7 +28,7 @@ func NewUserCache(client *redis.Client) UserCache {
 	return UserCache{client: client}
 }
 
-var Users = UserCache{}
+var DefaultUserCache = NewUserCache(nil)
 
 func userProfileCacheKey(userID uint) string {
 	return fmt.Sprintf("user:profile:%d", userID)
@@ -87,13 +87,13 @@ func (u UserCache) DeleteUserProfileCache(ctx context.Context, userID uint) erro
 }
 
 func GetUserProfileCache(ctx context.Context, userID uint) (*UserProfileCache, bool, error) {
-	return Users.GetUserProfileCache(ctx, userID)
+	return DefaultUserCache.GetUserProfileCache(ctx, userID)
 }
 
 func SetUserProfileCache(ctx context.Context, userID uint, value any) error {
-	return Users.SetUserProfileCache(ctx, userID, value)
+	return DefaultUserCache.SetUserProfileCache(ctx, userID, value)
 }
 
 func DeleteUserProfileCache(ctx context.Context, userID uint) error {
-	return Users.DeleteUserProfileCache(ctx, userID)
+	return DefaultUserCache.DeleteUserProfileCache(ctx, userID)
 }

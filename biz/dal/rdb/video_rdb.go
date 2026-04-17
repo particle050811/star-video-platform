@@ -24,7 +24,7 @@ func NewVideoCache(client *redis.Client) VideoCache {
 	return VideoCache{client: client}
 }
 
-var Videos = VideoCache{}
+var DefaultVideoCache = NewVideoCache(nil)
 
 func hotVideoCacheVersionKey() string {
 	return "video:hot:version"
@@ -159,29 +159,29 @@ func (v VideoCache) DeleteVideoDetailCache(ctx context.Context, videoID uint) er
 }
 
 func GetHotVideoCacheVersion(ctx context.Context) (int64, error) {
-	return Videos.GetHotVideoCacheVersion(ctx)
+	return DefaultVideoCache.GetHotVideoCacheVersion(ctx)
 }
 
 func GetHotVideoCache(ctx context.Context, version int64, offset, limit int, dest any) (bool, error) {
-	return Videos.GetHotVideoCache(ctx, version, offset, limit, dest)
+	return DefaultVideoCache.GetHotVideoCache(ctx, version, offset, limit, dest)
 }
 
 func GetVideoDetailCache(ctx context.Context, videoID uint, dest any) (bool, error) {
-	return Videos.GetVideoDetailCache(ctx, videoID, dest)
+	return DefaultVideoCache.GetVideoDetailCache(ctx, videoID, dest)
 }
 
 func SetHotVideoCache(ctx context.Context, version int64, offset, limit int, value any) error {
-	return Videos.SetHotVideoCache(ctx, version, offset, limit, value)
+	return DefaultVideoCache.SetHotVideoCache(ctx, version, offset, limit, value)
 }
 
 func SetVideoDetailCache(ctx context.Context, videoID uint, value any) error {
-	return Videos.SetVideoDetailCache(ctx, videoID, value)
+	return DefaultVideoCache.SetVideoDetailCache(ctx, videoID, value)
 }
 
 func BumpHotVideoCacheVersion(ctx context.Context) error {
-	return Videos.BumpHotVideoCacheVersion(ctx)
+	return DefaultVideoCache.BumpHotVideoCacheVersion(ctx)
 }
 
 func DeleteVideoDetailCache(ctx context.Context, videoID uint) error {
-	return Videos.DeleteVideoDetailCache(ctx, videoID)
+	return DefaultVideoCache.DeleteVideoDetailCache(ctx, videoID)
 }

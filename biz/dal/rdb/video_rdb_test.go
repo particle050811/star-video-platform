@@ -79,7 +79,7 @@ func TestDefaultVideoCacheUsesGlobalRedisClient(t *testing.T) {
 	mock.ExpectGet("video:hot:v1:0:20").SetVal(string(raw))
 
 	var got []model.Video
-	ok, err := Videos.GetHotVideoCache(context.Background(), 1, 0, 20, &got)
+	ok, err := DefaultVideoCache.GetHotVideoCache(context.Background(), 1, 0, 20, &got)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

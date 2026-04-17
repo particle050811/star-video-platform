@@ -178,7 +178,7 @@ func (r RelationCache) BumpFriendCacheVersion(ctx context.Context, userID uint) 
 }
 
 func (r RelationCache) DeleteUserProfileCache(ctx context.Context, userID uint) error {
-	return Users.DeleteUserProfileCache(ctx, userID)
+	return DefaultUserCache.DeleteUserProfileCache(ctx, userID)
 }
 
 func GetRelationFollowingCacheVersion(ctx context.Context, userID uint) (int64, error) {

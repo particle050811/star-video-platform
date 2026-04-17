@@ -31,7 +31,7 @@ type videoStore struct {
 
 var videos = videoStore{
 	db:    dbdal.Videos,
-	cache: rdbdal.Videos,
+	cache: rdbdal.DefaultVideoCache,
 }
 
 func CreateVideo(ctx context.Context, video *model.Video) error {

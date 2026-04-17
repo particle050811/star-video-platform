@@ -30,7 +30,7 @@ type userStore struct {
 
 var users = userStore{
 	db:    dbdal.Users,
-	cache: rdbdal.Users,
+	cache: rdbdal.DefaultUserCache,
 }
 
 type UserProfile struct {

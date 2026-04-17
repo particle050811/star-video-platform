@@ -100,7 +100,7 @@ func TestDefaultUserCacheUsesGlobalRedisClient(t *testing.T) {
 
 	mock.ExpectGet("user:profile:4").SetVal(string(raw))
 
-	got, ok, err := Users.GetUserProfileCache(context.Background(), 4)
+	got, ok, err := DefaultUserCache.GetUserProfileCache(context.Background(), 4)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
