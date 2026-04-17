@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"video-platform/biz/dal/db"
-	"video-platform/biz/dal/rdb"
+	dbdal "video-platform/biz/dal/db"
+	rdbdal "video-platform/biz/dal/rdb"
 )
 
 type relationDBStore interface {
@@ -16,13 +16,13 @@ type relationDBStore interface {
 
 type relationCacheStore interface {
 	GetRelationFollowingCacheVersion(ctx context.Context, userID uint) (int64, error)
-	GetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error)
+	GetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdbdal.RelationIDListCache, bool, error)
 	SetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error
 	GetRelationFollowerCacheVersion(ctx context.Context, userID uint) (int64, error)
-	GetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error)
+	GetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdbdal.RelationIDListCache, bool, error)
 	SetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error
 	GetRelationFriendCacheVersion(ctx context.Context, userID uint) (int64, error)
-	GetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error)
+	GetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdbdal.RelationIDListCache, bool, error)
 	SetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error
 	BumpFollowingCacheVersion(ctx context.Context, userID uint) error
 	BumpFollowerCacheVersion(ctx context.Context, userID uint) error
@@ -40,82 +40,6 @@ type relationStore struct {
 	snapshots relationSnapshotStore
 }
 
-type defaultRelationDBStore struct{}
-
-func (defaultRelationDBStore) FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
-	return db.FollowUser(ctx, fromUserID, toUserID)
-}
-
-func (defaultRelationDBStore) UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) {
-	return db.UnfollowUser(ctx, fromUserID, toUserID)
-}
-
-func (defaultRelationDBStore) ListFollowingIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return db.ListFollowingIDs(ctx, userID, offset, limit)
-}
-
-func (defaultRelationDBStore) ListFollowerIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return db.ListFollowerIDs(ctx, userID, offset, limit)
-}
-
-func (defaultRelationDBStore) ListFriendIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return db.ListFriendIDs(ctx, userID, offset, limit)
-}
-
-type defaultRelationCacheStore struct{}
-
-func (defaultRelationCacheStore) GetRelationFollowingCacheVersion(ctx context.Context, userID uint) (int64, error) {
-	return rdb.GetRelationFollowingCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) GetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error) {
-	return rdb.GetRelationFollowingCache(ctx, userID, version, offset, limit)
-}
-
-func (defaultRelationCacheStore) SetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return rdb.SetRelationFollowingCache(ctx, userID, version, offset, limit, value)
-}
-
-func (defaultRelationCacheStore) GetRelationFollowerCacheVersion(ctx context.Context, userID uint) (int64, error) {
-	return rdb.GetRelationFollowerCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) GetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error) {
-	return rdb.GetRelationFollowerCache(ctx, userID, version, offset, limit)
-}
-
-func (defaultRelationCacheStore) SetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return rdb.SetRelationFollowerCache(ctx, userID, version, offset, limit, value)
-}
-
-func (defaultRelationCacheStore) GetRelationFriendCacheVersion(ctx context.Context, userID uint) (int64, error) {
-	return rdb.GetRelationFriendCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) GetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int) (*rdb.RelationIDListCache, bool, error) {
-	return rdb.GetRelationFriendCache(ctx, userID, version, offset, limit)
-}
-
-func (defaultRelationCacheStore) SetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return rdb.SetRelationFriendCache(ctx, userID, version, offset, limit, value)
-}
-
-func (defaultRelationCacheStore) BumpFollowingCacheVersion(ctx context.Context, userID uint) error {
-	return rdb.BumpFollowingCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) BumpFollowerCacheVersion(ctx context.Context, userID uint) error {
-	return rdb.BumpFollowerCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) BumpFriendCacheVersion(ctx context.Context, userID uint) error {
-	return rdb.BumpFriendCacheVersion(ctx, userID)
-}
-
-func (defaultRelationCacheStore) DeleteUserProfileCache(ctx context.Context, userID uint) error {
-	return rdb.DeleteUserProfileCache(ctx, userID)
-}
-
 type defaultRelationSnapshotStore struct{}
 
 func (defaultRelationSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserProfile, error) {
@@ -123,8 +47,8 @@ func (defaultRelationSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, 
 }
 
 var relations = relationStore{
-	db:        defaultRelationDBStore{},
-	cache:     defaultRelationCacheStore{},
+	db:        dbdal.Relations,
+	cache:     rdbdal.Relations,
 	snapshots: defaultRelationSnapshotStore{},
 }
 
@@ -192,7 +116,7 @@ func (s relationStore) ListFollowings(ctx context.Context, userID uint, offset, 
 		return nil, 0, err
 	}
 
-	_ = s.cache.SetRelationFollowingCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
+	_ = s.cache.SetRelationFollowingCache(ctx, userID, version, offset, limit, rdbdal.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})
@@ -223,7 +147,7 @@ func (s relationStore) ListFollowers(ctx context.Context, userID uint, offset, l
 		return nil, 0, err
 	}
 
-	_ = s.cache.SetRelationFollowerCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
+	_ = s.cache.SetRelationFollowerCache(ctx, userID, version, offset, limit, rdbdal.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})
@@ -254,7 +178,7 @@ func (s relationStore) ListFriends(ctx context.Context, userID uint, offset, lim
 		return nil, 0, err
 	}
 
-	_ = s.cache.SetRelationFriendCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
+	_ = s.cache.SetRelationFriendCache(ctx, userID, version, offset, limit, rdbdal.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})

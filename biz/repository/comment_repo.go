@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"time"
-	"video-platform/biz/dal/db"
-	"video-platform/biz/dal/rdb"
+	dbdal "video-platform/biz/dal/db"
+	rdbdal "video-platform/biz/dal/rdb"
 )
 
 type VideoComment struct {
@@ -23,7 +23,7 @@ type VideoCommentListResult struct {
 }
 
 type commentDBStore interface {
-	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]db.VideoComment, int64, bool, error)
+	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]dbdal.VideoComment, int64, bool, error)
 }
 
 type commentCacheStore interface {
@@ -38,33 +38,9 @@ type commentStore struct {
 	cache commentCacheStore
 }
 
-type defaultCommentDBStore struct{}
-
-func (defaultCommentDBStore) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]db.VideoComment, int64, bool, error) {
-	return db.ListVideoComments(ctx, videoID, cursor, limit)
-}
-
-type defaultCommentCacheStore struct{}
-
-func (defaultCommentCacheStore) GetVideoCommentCacheVersion(ctx context.Context, videoID uint) (int64, error) {
-	return rdb.GetVideoCommentCacheVersion(ctx, videoID)
-}
-
-func (defaultCommentCacheStore) GetVideoCommentCache(ctx context.Context, videoID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
-	return rdb.GetVideoCommentCache(ctx, videoID, version, cursor, limit, dest)
-}
-
-func (defaultCommentCacheStore) SetVideoCommentCache(ctx context.Context, videoID uint, version int64, cursor uint, limit int, value any) error {
-	return rdb.SetVideoCommentCache(ctx, videoID, version, cursor, limit, value)
-}
-
-func (defaultCommentCacheStore) BumpVideoCommentCacheVersion(ctx context.Context, videoID uint) error {
-	return rdb.BumpVideoCommentCacheVersion(ctx, videoID)
-}
-
 var comments = commentStore{
-	db:    defaultCommentDBStore{},
-	cache: defaultCommentCacheStore{},
+	db:    dbdal.Comments,
+	cache: rdbdal.Comments,
 }
 
 func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*VideoCommentListResult, error) {

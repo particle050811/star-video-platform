@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 	"video-platform/biz/dal/model"
+
+	"gorm.io/gorm"
 )
 
 type VideoQuery struct {
@@ -17,20 +19,37 @@ type VideoQuery struct {
 	Limit    int
 }
 
-func CreateVideo(ctx context.Context, video *model.Video) error {
-	return DB.WithContext(ctx).Create(video).Error
+type VideoDB struct {
+	db *gorm.DB
 }
 
-func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
+func NewVideoDB(gdb *gorm.DB) VideoDB {
+	return VideoDB{db: gdb}
+}
+
+var Videos = NewVideoDB(DB)
+
+func (v VideoDB) gormDB() *gorm.DB {
+	if v.db != nil {
+		return v.db
+	}
+	return DB
+}
+
+func (v VideoDB) CreateVideo(ctx context.Context, video *model.Video) error {
+	return v.gormDB().WithContext(ctx).Create(video).Error
+}
+
+func (v VideoDB) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	var video model.Video
-	if err := DB.WithContext(ctx).First(&video, videoID).Error; err != nil {
+	if err := v.gormDB().WithContext(ctx).First(&video, videoID).Error; err != nil {
 		return nil, err
 	}
 	return &video, nil
 }
 
-func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	query := DB.WithContext(ctx).Model(&model.Video{}).Where("user_id = ?", userID)
+func (v VideoDB) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
+	query := v.gormDB().WithContext(ctx).Model(&model.Video{}).Where("user_id = ?", userID)
 
 	videos := make([]model.Video, 0)
 	if err := query.Order("created_at DESC, id DESC").Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
@@ -40,8 +59,8 @@ func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]
 	return videos, nil
 }
 
-func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error) {
-	query := DB.WithContext(ctx).Model(&model.Video{})
+func (v VideoDB) SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error) {
+	query := v.gormDB().WithContext(ctx).Model(&model.Video{})
 
 	if keywords := strings.TrimSpace(params.Keywords); keywords != "" {
 		like := "%" + keywords + "%"
@@ -76,8 +95,8 @@ func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error)
 	return videos, nil
 }
 
-func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	query := DB.WithContext(ctx).Model(&model.Video{})
+func (v VideoDB) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
+	query := v.gormDB().WithContext(ctx).Model(&model.Video{})
 
 	videos := make([]model.Video, 0)
 	if err := query.Order("like_count DESC, visit_count DESC, id DESC").Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
@@ -85,4 +104,24 @@ func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error
 	}
 
 	return videos, nil
+}
+
+func CreateVideo(ctx context.Context, video *model.Video) error {
+	return Videos.CreateVideo(ctx, video)
+}
+
+func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
+	return Videos.GetVideoByID(ctx, videoID)
+}
+
+func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
+	return Videos.ListVideosByUserID(ctx, userID, offset, limit)
+}
+
+func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error) {
+	return Videos.SearchVideos(ctx, params)
+}
+
+func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
+	return Videos.ListHotVideos(ctx, offset, limit)
 }

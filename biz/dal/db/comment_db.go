@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 	"video-platform/biz/dal/model"
+
+	"gorm.io/gorm"
 )
 
 type VideoComment struct {
@@ -14,9 +16,26 @@ type VideoComment struct {
 	CreatedAt time.Time
 }
 
-func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]VideoComment, int64, bool, error) {
+type CommentDB struct {
+	db *gorm.DB
+}
+
+func NewCommentDB(gdb *gorm.DB) CommentDB {
+	return CommentDB{db: gdb}
+}
+
+var Comments = NewCommentDB(DB)
+
+func (c CommentDB) gormDB() *gorm.DB {
+	if c.db != nil {
+		return c.db
+	}
+	return DB
+}
+
+func (c CommentDB) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]VideoComment, int64, bool, error) {
 	var total int64
-	if err := DB.WithContext(ctx).Model(&model.Comment{}).
+	if err := c.gormDB().WithContext(ctx).Model(&model.Comment{}).
 		Where("video_id = ?", videoID).
 		Count(&total).Error; err != nil {
 		return nil, 0, false, err
@@ -27,7 +46,7 @@ func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int
 		return comments, 0, false, nil
 	}
 
-	query := DB.WithContext(ctx).
+	query := c.gormDB().WithContext(ctx).
 		Model(&model.Comment{}).
 		Select("id, user_id, content, like_count, created_at").
 		Where("video_id = ?", videoID)
@@ -49,4 +68,8 @@ func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int
 	}
 
 	return comments, total, hasMore, nil
+}
+
+func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]VideoComment, int64, bool, error) {
+	return Comments.ListVideoComments(ctx, videoID, cursor, limit)
 }
