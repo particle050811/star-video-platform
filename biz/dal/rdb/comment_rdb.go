@@ -8,18 +8,26 @@ import (
 
 const videoCommentCacheTTL = 1 * time.Minute
 
-func videoCommentCacheKey(videoID uint, offset, limit int) string {
-	return fmt.Sprintf("comment:list:%d:%d:%d", videoID, offset, limit)
+func videoCommentCacheVersionKey(videoID uint) string {
+	return fmt.Sprintf("comment:list:version:%d", videoID)
 }
 
-func GetVideoCommentCache(ctx context.Context, videoID uint, offset, limit int, dest any) (bool, error) {
-	return getJSON(ctx, videoCommentCacheKey(videoID, offset, limit), dest)
+func videoCommentCacheKey(videoID uint, version int64, offset, limit int) string {
+	return fmt.Sprintf("comment:list:%d:v%d:%d:%d", videoID, version, offset, limit)
 }
 
-func SetVideoCommentCache(ctx context.Context, videoID uint, offset, limit int, value any) error {
-	return setJSON(ctx, videoCommentCacheKey(videoID, offset, limit), value, videoCommentCacheTTL)
+func GetVideoCommentCacheVersion(ctx context.Context, videoID uint) (int64, error) {
+	return getCacheVersion(ctx, videoCommentCacheVersionKey(videoID))
 }
 
-func DeleteVideoCommentCaches(ctx context.Context, videoID uint) error {
-	return deleteByPattern(ctx, fmt.Sprintf("comment:list:%d:*", videoID))
+func GetVideoCommentCache(ctx context.Context, videoID uint, version int64, offset, limit int, dest any) (bool, error) {
+	return getJSON(ctx, videoCommentCacheKey(videoID, version, offset, limit), dest)
+}
+
+func SetVideoCommentCache(ctx context.Context, videoID uint, version int64, offset, limit int, value any) error {
+	return setJSON(ctx, videoCommentCacheKey(videoID, version, offset, limit), value, videoCommentCacheTTL)
+}
+
+func BumpVideoCommentCacheVersion(ctx context.Context, videoID uint) error {
+	return bumpCacheVersion(ctx, videoCommentCacheVersionKey(videoID))
 }

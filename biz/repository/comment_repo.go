@@ -16,8 +16,13 @@ type VideoComment struct {
 }
 
 func ListVideoComments(ctx context.Context, videoID uint, offset, limit int) ([]VideoComment, int64, error) {
+	version, err := rdb.GetVideoCommentCacheVersion(ctx, videoID)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var cached videoCommentCachePayload
-	if ok, err := rdb.GetVideoCommentCache(ctx, videoID, offset, limit, &cached); err == nil && ok {
+	if ok, err := rdb.GetVideoCommentCache(ctx, videoID, version, offset, limit, &cached); err == nil && ok {
 		return cached.Items, cached.Total, nil
 	}
 
@@ -37,7 +42,7 @@ func ListVideoComments(ctx context.Context, videoID uint, offset, limit int) ([]
 		})
 	}
 
-	_ = rdb.SetVideoCommentCache(ctx, videoID, offset, limit, videoCommentCachePayload{
+	_ = rdb.SetVideoCommentCache(ctx, videoID, version, offset, limit, videoCommentCachePayload{
 		Items: items,
 		Total: total,
 	})
@@ -50,5 +55,5 @@ type videoCommentCachePayload struct {
 }
 
 func DeleteVideoCommentListCache(ctx context.Context, videoID uint) {
-	_ = rdb.DeleteVideoCommentCaches(ctx, videoID)
+	_ = rdb.BumpVideoCommentCacheVersion(ctx, videoID)
 }

@@ -12,7 +12,7 @@ func CreateVideo(ctx context.Context, video *model.Video) error {
 		return err
 	}
 
-	_ = rdb.DeleteHotVideoCaches(ctx)
+	_ = rdb.BumpHotVideoCacheVersion(ctx)
 	return nil
 }
 
@@ -48,16 +48,21 @@ func SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate
 }
 
 func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	var videos []model.Video
-	if ok, err := rdb.GetHotVideoCache(ctx, offset, limit, &videos); err == nil && ok {
-		return videos, nil
-	}
-
-	videos, err := db.ListHotVideos(ctx, offset, limit)
+	version, err := rdb.GetHotVideoCacheVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	_ = rdb.SetHotVideoCache(ctx, offset, limit, videos)
+	var videos []model.Video
+	if ok, err := rdb.GetHotVideoCache(ctx, version, offset, limit, &videos); err == nil && ok {
+		return videos, nil
+	}
+
+	videos, err = db.ListHotVideos(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = rdb.SetHotVideoCache(ctx, version, offset, limit, videos)
 	return videos, nil
 }

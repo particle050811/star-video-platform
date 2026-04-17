@@ -27,7 +27,12 @@ func UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) 
 }
 
 func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
-	if cached, ok, err := rdb.GetRelationFollowingCache(ctx, userID, offset, limit); err == nil && ok {
+	version, err := rdb.GetRelationFollowingCacheVersion(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if cached, ok, err := rdb.GetRelationFollowingCache(ctx, userID, version, offset, limit); err == nil && ok {
 		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
 		if err != nil {
 			return nil, 0, err
@@ -45,7 +50,7 @@ func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]User
 		return nil, 0, err
 	}
 
-	_ = rdb.SetRelationFollowingCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+	_ = rdb.SetRelationFollowingCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})
@@ -53,7 +58,12 @@ func ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]User
 }
 
 func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
-	if cached, ok, err := rdb.GetRelationFollowerCache(ctx, userID, offset, limit); err == nil && ok {
+	version, err := rdb.GetRelationFollowerCacheVersion(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if cached, ok, err := rdb.GetRelationFollowerCache(ctx, userID, version, offset, limit); err == nil && ok {
 		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
 		if err != nil {
 			return nil, 0, err
@@ -71,7 +81,7 @@ func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserP
 		return nil, 0, err
 	}
 
-	_ = rdb.SetRelationFollowerCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+	_ = rdb.SetRelationFollowerCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})
@@ -79,7 +89,12 @@ func ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]UserP
 }
 
 func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserProfile, int64, error) {
-	if cached, ok, err := rdb.GetRelationFriendCache(ctx, userID, offset, limit); err == nil && ok {
+	version, err := rdb.GetRelationFriendCacheVersion(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if cached, ok, err := rdb.GetRelationFriendCache(ctx, userID, version, offset, limit); err == nil && ok {
 		users, err := ListUserSnapshotsByIDs(ctx, cached.UserIDs)
 		if err != nil {
 			return nil, 0, err
@@ -97,7 +112,7 @@ func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserPro
 		return nil, 0, err
 	}
 
-	_ = rdb.SetRelationFriendCache(ctx, userID, offset, limit, rdb.RelationIDListCache{
+	_ = rdb.SetRelationFriendCache(ctx, userID, version, offset, limit, rdb.RelationIDListCache{
 		UserIDs: userIDs,
 		Total:   total,
 	})
@@ -105,10 +120,10 @@ func ListFriends(ctx context.Context, userID uint, offset, limit int) ([]UserPro
 }
 
 func deleteRelationCaches(ctx context.Context, fromUserID, toUserID uint) {
-	_ = rdb.DeleteFollowingCaches(ctx, fromUserID)
-	_ = rdb.DeleteFollowerCaches(ctx, toUserID)
-	_ = rdb.DeleteFriendCaches(ctx, fromUserID)
-	_ = rdb.DeleteFriendCaches(ctx, toUserID)
+	_ = rdb.BumpFollowingCacheVersion(ctx, fromUserID)
+	_ = rdb.BumpFollowerCacheVersion(ctx, toUserID)
+	_ = rdb.BumpFriendCacheVersion(ctx, fromUserID)
+	_ = rdb.BumpFriendCacheVersion(ctx, toUserID)
 	_ = rdb.DeleteUserProfileCache(ctx, fromUserID)
 	_ = rdb.DeleteUserProfileCache(ctx, toUserID)
 }

@@ -89,25 +89,34 @@ func deleteKeys(ctx context.Context, keys ...string) error {
 	return RDB.Del(ctx, keys...).Err()
 }
 
-func deleteByPattern(ctx context.Context, pattern string) error {
+func getCacheVersion(ctx context.Context, key string) (int64, error) {
+	if RDB == nil {
+		return 1, nil
+	}
+
+	value, err := RDB.Get(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return 1, nil
+		}
+		return 0, err
+	}
+
+	version, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if version < 1 {
+		return 0, errors.New("cache version must be greater than zero")
+	}
+
+	return version, nil
+}
+
+func bumpCacheVersion(ctx context.Context, key string) error {
 	if RDB == nil {
 		return nil
 	}
 
-	var cursor uint64
-	for {
-		keys, nextCursor, err := RDB.Scan(ctx, cursor, pattern, 100).Result()
-		if err != nil {
-			return err
-		}
-		if len(keys) > 0 {
-			if err := RDB.Del(ctx, keys...).Err(); err != nil {
-				return err
-			}
-		}
-		cursor = nextCursor
-		if cursor == 0 {
-			return nil
-		}
-	}
+	return RDB.Incr(ctx, key).Err()
 }
