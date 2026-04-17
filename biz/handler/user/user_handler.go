@@ -29,7 +29,7 @@ func Register(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err = service.Register(ctx, req.Username, req.Password)
+	err = service.User.Register(ctx, req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrUserExists) {
 			c.JSON(consts.StatusConflict, &user.RegisterResponse{
@@ -63,7 +63,7 @@ func Login(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	accessToken, refreshToken, err := service.Login(ctx, req.Username, req.Password)
+	accessToken, refreshToken, err := service.User.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &user.LoginResponse{
@@ -105,7 +105,7 @@ func RefreshToken(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	accessToken, refreshToken, err := service.RefreshToken(ctx, req.RefreshToken)
+	accessToken, refreshToken, err := service.User.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, service.ErrTokenExpired) {
 			c.JSON(consts.StatusUnauthorized, &user.RefreshTokenResponse{
@@ -155,7 +155,7 @@ func GetUserInfo(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	userInfo, err := service.GetUserInfo(ctx, userID)
+	userInfo, err := service.User.GetUserInfo(ctx, userID)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &user.GetUserInfoResponse{
@@ -191,7 +191,7 @@ func UploadAvatar(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err = service.UpdateUserAvatar(ctx, userID, file)
+	err = service.User.UpdateUserAvatar(ctx, userID, file)
 	if err != nil {
 		if errors.Is(err, service.ErrUnsupportedAvatarExt) {
 			c.JSON(consts.StatusBadRequest, &user.UploadAvatarResponse{

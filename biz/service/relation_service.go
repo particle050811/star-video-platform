@@ -16,12 +16,22 @@ const (
 	relationActionUnfollow = relation.RelationActionType_RELATION_ACTION_TYPE_UNFOLLOW
 )
 
-func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType relation.RelationActionType) error {
+type relationService struct {
+	repo relationRepository
+}
+
+var defaultRelationService = relationService{
+	repo: defaultRelationRepository{},
+}
+
+var Relation = defaultRelationService
+
+func (s relationService) RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType relation.RelationActionType) error {
 	if fromUserID == toUserID {
 		return ErrCannotFollowSelf
 	}
 
-	if _, err := repository.GetUserByID(ctx, toUserID); err != nil {
+	if _, err := s.repo.GetUserByID(ctx, toUserID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
@@ -30,7 +40,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 
 	switch actionType {
 	case relationActionFollow:
-		if err := repository.FollowUser(ctx, fromUserID, toUserID); err != nil {
+		if err := s.repo.FollowUser(ctx, fromUserID, toUserID); err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
 				return ErrAlreadyFollowed
 			}
@@ -38,7 +48,7 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 		}
 		return nil
 	case relationActionUnfollow:
-		deleted, err := repository.UnfollowUser(ctx, fromUserID, toUserID)
+		deleted, err := s.repo.UnfollowUser(ctx, fromUserID, toUserID)
 		if err != nil {
 			return err
 		}
@@ -51,8 +61,8 @@ func RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType r
 	return nil
 }
 
-func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := repository.GetUserByID(ctx, userID); err != nil {
+func (s relationService) ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -60,7 +70,7 @@ func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := repository.ListFollowings(ctx, userID, offset, limit)
+	users, total, err := s.repo.ListFollowings(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +78,8 @@ func ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (
 	return buildSocialList(users, total), nil
 }
 
-func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := repository.GetUserByID(ctx, userID); err != nil {
+func (s relationService) ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -77,7 +87,7 @@ func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := repository.ListFollowers(ctx, userID, offset, limit)
+	users, total, err := s.repo.ListFollowers(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +95,8 @@ func ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*
 	return buildSocialList(users, total), nil
 }
 
-func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
-	if _, err := repository.GetUserByID(ctx, userID); err != nil {
+func (s relationService) ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -94,7 +104,7 @@ func ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*re
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := repository.ListFriends(ctx, userID, offset, limit)
+	users, total, err := s.repo.ListFriends(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}

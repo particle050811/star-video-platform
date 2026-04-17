@@ -7,21 +7,33 @@ import (
 	"strconv"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/user"
-	"video-platform/biz/repository"
 	"video-platform/pkg/auth"
 	"video-platform/pkg/upload"
 
 	"gorm.io/gorm"
 )
 
-// Register 用户注册
-func Register(ctx context.Context, username, password string) error {
-	hashedPassword, err := auth.HashPassword(password)
+type userService struct {
+	repo   userRepository
+	auth   authProvider
+	upload uploadProvider
+}
+
+var defaultUserService = userService{
+	repo:   defaultUserRepository{},
+	auth:   defaultAuthProvider{},
+	upload: defaultUploadProvider{},
+}
+
+var User = defaultUserService
+
+func (s userService) Register(ctx context.Context, username, password string) error {
+	hashedPassword, err := s.auth.HashPassword(password)
 	if err != nil {
 		return err
 	}
 
-	if err := repository.CreateUser(ctx, &model.User{
+	if err := s.repo.CreateUser(ctx, &model.User{
 		Username: username, Password: string(hashedPassword)}); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return ErrUserExists
@@ -31,8 +43,8 @@ func Register(ctx context.Context, username, password string) error {
 	return nil
 }
 
-func Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
-	user, err := repository.GetUserByUsername(ctx, username)
+func (s userService) Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
+	user, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", "", ErrUserNotFound
@@ -40,15 +52,15 @@ func Login(ctx context.Context, username, password string) (accessToken, refresh
 		return "", "", err
 	}
 
-	if err := auth.CheckPassword(user.Password, password); err != nil {
+	if err := s.auth.CheckPassword(user.Password, password); err != nil {
 		return "", "", ErrPasswordWrong
 	}
 
-	return auth.GenerateTokenPair(user.ID)
+	return s.auth.GenerateTokenPair(user.ID)
 }
 
-func RefreshToken(ctx context.Context, refresh_token string) (accessToken, refreshToken string, err error) {
-	accessToken, refreshToken, err = auth.RefreshTokens(refresh_token)
+func (s userService) RefreshToken(ctx context.Context, refreshToken string) (accessToken, nextRefreshToken string, err error) {
+	accessToken, nextRefreshToken, err = s.auth.RefreshTokens(refreshToken)
 	if err != nil {
 		if errors.Is(err, auth.ErrTokenExpired) {
 			return "", "", ErrTokenExpired
@@ -59,11 +71,11 @@ func RefreshToken(ctx context.Context, refresh_token string) (accessToken, refre
 		return "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, nextRefreshToken, nil
 }
 
-func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
-	user, err := repository.GetUserByID(ctx, userID)
+func (s userService) GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -78,8 +90,8 @@ func GetUserInfo(ctx context.Context, userID uint) (*v1.User, error) {
 	}, nil
 }
 
-func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) (err error) {
-	user, err := repository.GetUserByID(ctx, userID)
+func (s userService) UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHeader) (err error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
@@ -90,12 +102,12 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 	var avatarURL string
 	defer func() {
 		if err != nil {
-			_ = upload.RemoveAvatar(avatarURL)
+			_ = s.upload.RemoveAvatar(avatarURL)
 		}
 	}()
 
 	var savePath string
-	savePath, avatarURL, err = upload.PrepareAvatar(userID, file.Filename)
+	savePath, avatarURL, err = s.upload.PrepareAvatar(userID, file.Filename)
 	if err != nil {
 		if errors.Is(err, upload.ErrUnsupportedAvatarExt) {
 			return ErrUnsupportedAvatarExt
@@ -103,11 +115,11 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 		return err
 	}
 
-	if err := upload.SaveFile(file, savePath); err != nil {
+	if err := s.upload.SaveFile(file, savePath); err != nil {
 		return err
 	}
 
-	if err := repository.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
+	if err := s.repo.UpdateUserAvatar(ctx, userID, avatarURL); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
@@ -115,7 +127,7 @@ func UpdateUserAvatar(ctx context.Context, userID uint, file *multipart.FileHead
 	}
 
 	if user.AvatarURL != avatarURL {
-		_ = upload.RemoveAvatar(user.AvatarURL)
+		_ = s.upload.RemoveAvatar(user.AvatarURL)
 	}
 
 	return nil

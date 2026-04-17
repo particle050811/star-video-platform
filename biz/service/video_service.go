@@ -16,7 +16,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func PublishVideo(ctx context.Context, userID uint, title, description string, videoFile, coverFile *multipart.FileHeader) (err error) {
+type videoService struct {
+	repo   videoRepository
+	upload uploadProvider
+}
+
+var Video = videoService{
+	repo:   defaultVideoRepository{},
+	upload: defaultUploadProvider{},
+}
+
+func (s videoService) PublishVideo(ctx context.Context, userID uint, title, description string, videoFile, coverFile *multipart.FileHeader) (err error) {
 	if title == "" {
 		return ErrVideoTitleRequired
 	}
@@ -24,7 +34,7 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 		return ErrVideoFileRequired
 	}
 
-	if _, err := repository.GetUserByID(ctx, userID); err != nil {
+	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}
@@ -35,13 +45,13 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 	var coverURL string
 	defer func() {
 		if err != nil {
-			_ = upload.RemoveVideo(videoURL)
-			_ = upload.RemoveVideoCover(coverURL)
+			_ = s.upload.RemoveVideo(videoURL)
+			_ = s.upload.RemoveVideoCover(coverURL)
 		}
 	}()
 
 	var videoPath string
-	videoPath, videoURL, err = upload.PrepareVideo(userID, videoFile.Filename)
+	videoPath, videoURL, err = s.upload.PrepareVideo(userID, videoFile.Filename)
 	if err != nil {
 		if errors.Is(err, upload.ErrUnsupportedVideoExt) {
 			return ErrUnsupportedVideoExt
@@ -49,12 +59,12 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 		return err
 	}
 
-	if err := upload.SaveFile(videoFile, videoPath); err != nil {
+	if err := s.upload.SaveFile(videoFile, videoPath); err != nil {
 		return err
 	}
 
 	if coverFile != nil {
-		coverPath, savedCoverURL, coverErr := upload.PrepareVideoCover(userID, coverFile.Filename)
+		coverPath, savedCoverURL, coverErr := s.upload.PrepareVideoCover(userID, coverFile.Filename)
 		if coverErr != nil {
 			if errors.Is(coverErr, upload.ErrUnsupportedVideoCoverExt) {
 				return ErrUnsupportedVideoCoverExt
@@ -62,12 +72,12 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 			return coverErr
 		}
 		coverURL = savedCoverURL
-		if err := upload.SaveFile(coverFile, coverPath); err != nil {
+		if err := s.upload.SaveFile(coverFile, coverPath); err != nil {
 			return err
 		}
 	}
 
-	if err := repository.CreateVideo(ctx, &model.Video{
+	if err := s.repo.CreateVideo(ctx, &model.Video{
 		UserID:      userID,
 		VideoURL:    videoURL,
 		CoverURL:    coverURL,
@@ -80,8 +90,8 @@ func PublishVideo(ctx context.Context, userID uint, title, description string, v
 	return nil
 }
 
-func ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int32) (*v1.VideoList, error) {
-	if _, err := repository.GetUserByID(ctx, userID); err != nil {
+func (s videoService) ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int32) (*v1.VideoList, error) {
+	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
@@ -89,7 +99,7 @@ func ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int
 	}
 
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	videos, err := repository.ListVideosByUserID(ctx, userID, offset, limit)
+	videos, err := s.repo.ListVideosByUserID(ctx, userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -97,19 +107,19 @@ func ListPublishedVideos(ctx context.Context, userID uint, pageNum, pageSize int
 	return buildVideoList(videos), nil
 }
 
-func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoList, error) {
+func (s videoService) SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoList, error) {
 	offset, limit := pagination.Normalize(req.PageNum, req.PageSize)
 
 	var userIDs []uint
 	if username := strings.TrimSpace(req.Username); username != "" {
-		foundUserIDs, err := repository.ListUserIDsByUsername(ctx, username)
+		foundUserIDs, err := s.repo.ListUserIDsByUsername(ctx, username)
 		if err != nil {
 			return nil, err
 		}
 		userIDs = foundUserIDs
 	}
 
-	videos, err := repository.SearchVideos(ctx, req.Keywords, userIDs, req.FromDate, req.ToDate, req.SortBy, offset, limit)
+	videos, err := s.repo.SearchVideos(ctx, req.Keywords, userIDs, req.FromDate, req.ToDate, req.SortBy, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +127,8 @@ func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoLi
 	return buildVideoList(videos), nil
 }
 
-func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int32) (*v1.VideoCommentList, error) {
-	if _, err := repository.GetVideoByID(ctx, videoID); err != nil {
+func (s videoService) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int32) (*v1.VideoCommentList, error) {
+	if _, err := s.repo.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrVideoNotFound
 		}
@@ -132,7 +142,7 @@ func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int
 		limit = pagination.MaxPageSize
 	}
 
-	result, err := repository.ListVideoComments(ctx, videoID, cursor, int(limit))
+	result, err := s.repo.ListVideoComments(ctx, videoID, cursor, int(limit))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +152,7 @@ func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int
 		commentUserIDs = append(commentUserIDs, item.UserID)
 	}
 
-	users, err := repository.ListUserSnapshotsByIDs(ctx, commentUserIDs)
+	users, err := s.repo.ListUserSnapshotsByIDs(ctx, commentUserIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +189,9 @@ func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int
 	}, nil
 }
 
-func GetHotVideos(ctx context.Context, pageNum, pageSize int32) (*v1.VideoList, error) {
+func (s videoService) GetHotVideos(ctx context.Context, pageNum, pageSize int32) (*v1.VideoList, error) {
 	offset, limit := pagination.Normalize(pageNum, pageSize)
-	videos, err := repository.ListHotVideos(ctx, offset, limit)
+	videos, err := s.repo.ListHotVideos(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -38,7 +38,7 @@ func RelationAction(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err = service.RelationAction(ctx, fromUserID, toUserID, req.ActionType)
+	err = service.Relation.RelationAction(ctx, fromUserID, toUserID, req.ActionType)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCannotFollowSelf):
@@ -94,7 +94,7 @@ func ListFollowings(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.ListFollowings(ctx, userID, req.PageNum, req.PageSize)
+	data, err := service.Relation.ListFollowings(ctx, userID, req.PageNum, req.PageSize)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFollowingsResponse{
@@ -134,7 +134,7 @@ func ListFollowers(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.ListFollowers(ctx, userID, req.PageNum, req.PageSize)
+	data, err := service.Relation.ListFollowers(ctx, userID, req.PageNum, req.PageSize)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFollowersResponse{
@@ -169,7 +169,7 @@ func ListFriends(ctx context.Context, c *app.RequestContext) {
 	userIDValue, _ := c.Get(middleware.ContextUserID)
 	userID := userIDValue.(uint)
 
-	data, err := service.ListFriends(ctx, userID, req.PageNum, req.PageSize)
+	data, err := service.Relation.ListFriends(ctx, userID, req.PageNum, req.PageSize)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFriendsResponse{
