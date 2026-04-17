@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package api.video.v1;
+
+option go_package = "/openapi_doc";
+
+import public "user.proto";
+import public "video.proto";
+import public "relation.proto";

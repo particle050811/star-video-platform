@@ -6,6 +6,15 @@ option go_package = "/user";
 
 import "api.proto";
 import "common.proto";
+import "openapi/annotations.proto";
+
+option (openapi.document) = {
+  info: {
+    title: "Star Video Platform API";
+    version: "v1";
+    description: "短视频平台 HTTP OpenAPI 文档";
+  }
+};
 
 // User 是用户数据结构
 message User {
@@ -22,7 +31,7 @@ message RegisterRequest {
 }
 
 message RegisterResponse {
-  BaseResponse base = 1;
+  BaseResponse base = 1 [(.api.body) = "base"];
 }
 
 message LoginRequest {
@@ -31,10 +40,9 @@ message LoginRequest {
 }
 
 message LoginResponse {
-  BaseResponse base = 1;
-  User data = 2;
-  string access_token = 3;  // 访问令牌，有效期 15 分钟
-  string refresh_token = 4; // 刷新令牌，有效期 7 天
+  BaseResponse base = 1 [(.api.body) = "base"];
+  string access_token = 2 [(.api.body) = "access_token"];  // 访问令牌，有效期 15 分钟
+  string refresh_token = 3 [(.api.body) = "refresh_token"]; // 刷新令牌，有效期 7 天
 }
 
 message GetUserInfoRequest {
@@ -42,8 +50,8 @@ message GetUserInfoRequest {
 }
 
 message GetUserInfoResponse {
-  BaseResponse base = 1;
-  User data = 2;
+  BaseResponse base = 1 [(.api.body) = "base"];
+  User data = 2 [(.api.body) = "data"];
 }
 
 // UploadAvatarRequest: 文件通过 multipart/form-data 上传，不在 proto 中定义
@@ -51,7 +59,7 @@ message GetUserInfoResponse {
 message UploadAvatarRequest {}
 
 message UploadAvatarResponse {
-  BaseResponse base = 1;
+  BaseResponse base = 1 [(.api.body) = "base"];
 }
 
 // RefreshTokenRequest: 使用 refresh_token 换取新的 access_token
@@ -60,9 +68,9 @@ message RefreshTokenRequest {
 }
 
 message RefreshTokenResponse {
-  BaseResponse base = 1;
-  string access_token = 2;  // 新的访问令牌
-  string refresh_token = 3; // 新的刷新令牌（可选：滑动刷新）
+  BaseResponse base = 1 [(.api.body) = "base"];
+  string access_token = 2 [(.api.body) = "access_token"];  // 新的访问令牌
+  string refresh_token = 3 [(.api.body) = "refresh_token"]; // 新的刷新令牌（可选：滑动刷新）
 }
 
 // ---------- Handler 定义 ----------

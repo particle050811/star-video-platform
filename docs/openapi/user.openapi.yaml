@@ -1,0 +1,167 @@
+# Generated with protoc-gen-http-swagger
+# https://github.com/hertz-contrib/swagger-generate/blob/main/protoc-gen-http-swagger
+
+openapi: 3.0.3
+info:
+    title: Star Video Platform API
+    description: 短视频平台 HTTP OpenAPI 文档
+    version: v1
+paths:
+    /api/v1/user/avatar:
+        post:
+            tags:
+                - UserHandler
+            operationId: UserHandler_UploadAvatar
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UploadAvatarResponseBody'
+    /api/v1/user/info:
+        get:
+            tags:
+                - UserHandler
+            operationId: UserHandler_GetUserInfo
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserInfoResponseBody'
+    /api/v1/user/login:
+        post:
+            tags:
+                - UserHandler
+            operationId: UserHandler_Login
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LoginRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LoginResponseBody'
+    /api/v1/user/refresh:
+        post:
+            tags:
+                - UserHandler
+            operationId: UserHandler_RefreshToken
+            requestBody:
+                description: 'RefreshTokenRequest: 使用 refresh_token 换取新的 access_token'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RefreshTokenRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RefreshTokenResponseBody'
+    /api/v1/user/register:
+        post:
+            tags:
+                - UserHandler
+            operationId: UserHandler_Register
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RegisterRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RegisterResponseBody'
+components:
+    schemas:
+        BaseResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                msg:
+                    type: string
+            description: BaseResponse 表示所有接口共享的返回状态（作业给的接口示例，但是一般不这么写）
+        GetUserInfoResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/User'
+        LoginRequestBody:
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+        LoginResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                access_token:
+                    type: string
+                refresh_token:
+                    type: string
+        RefreshTokenRequestBody:
+            type: object
+            properties:
+                refresh_token:
+                    type: string
+        RefreshTokenResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                access_token:
+                    type: string
+                refresh_token:
+                    type: string
+        RegisterRequestBody:
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+        RegisterResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        UploadAvatarResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        User:
+            type: object
+            properties:
+                id:
+                    type: string
+                username:
+                    type: string
+                avatarUrl:
+                    type: string
+            description: User 是用户数据结构
+tags:
+    - name: UserHandler

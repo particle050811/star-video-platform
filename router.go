@@ -3,6 +3,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	handler "video-platform/biz/handler"
 	"video-platform/pkg/upload"
@@ -10,10 +14,38 @@ import (
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
+	docsRoot := openAPIDocsRoot()
+
 	r.GET("/ping", handler.Ping)
 	r.Static(upload.AvatarRoute, upload.AvatarDir)
 	r.Static(upload.VideoRoute, upload.VideoDir)
 	r.Static(upload.VideoCoverURL, upload.VideoCoverDir)
+	r.StaticFile("/openapi", filepath.Join(docsRoot, "index.html"))
+	r.StaticFS("/openapi", &app.FS{
+		Root:               docsRoot,
+		PathRewrite:        app.NewPathSlashesStripper(1),
+		GenerateIndexPages: true,
+	})
 
 	// your code ...
+}
+
+func openAPIDocsRoot() string {
+	candidates := []string{"./docs"}
+
+	if exePath, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exePath)
+		candidates = append(candidates,
+			filepath.Join(exeDir, "docs"),
+			filepath.Join(exeDir, "..", "docs"),
+		)
+	}
+
+	for _, candidate := range candidates {
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+	}
+
+	return "./docs"
 }

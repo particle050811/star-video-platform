@@ -1,0 +1,169 @@
+# Generated with protoc-gen-http-swagger
+# https://github.com/hertz-contrib/swagger-generate/blob/main/protoc-gen-http-swagger
+
+openapi: 3.0.3
+info:
+    title: RelationHandler API
+    version: 3.0.3
+paths:
+    /api/v1/relation/action:
+        post:
+            tags:
+                - RelationHandler
+            operationId: RelationHandler_RelationAction
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RelationActionRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RelationActionResponseBody'
+    /api/v1/relation/follower/list:
+        get:
+            tags:
+                - RelationHandler
+            operationId: RelationHandler_ListFollowers
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListFollowersResponseBody'
+    /api/v1/relation/following/list:
+        get:
+            tags:
+                - RelationHandler
+            operationId: RelationHandler_ListFollowings
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListFollowingsResponseBody'
+    /api/v1/relation/friend/list:
+        get:
+            tags:
+                - RelationHandler
+            operationId: RelationHandler_ListFriends
+            parameters:
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListFriendsResponseBody'
+components:
+    schemas:
+        BaseResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                msg:
+                    type: string
+            description: BaseResponse 表示所有接口共享的返回状态（作业给的接口示例，但是一般不这么写）
+        ListFollowersResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/SocialListWithTotal'
+        ListFollowingsResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/SocialListWithTotal'
+        ListFriendsResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/SocialListWithTotal'
+        RelationActionRequestBody:
+            type: object
+            properties:
+                to_user_id:
+                    type: string
+                action_type:
+                    type: integer
+                    format: enum
+        RelationActionResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        SocialListWithTotal:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SocialProfile'
+                total:
+                    type: string
+            description: SocialListWithTotal 用于社交相关的分页结果
+        SocialProfile:
+            type: object
+            properties:
+                id:
+                    type: string
+                username:
+                    type: string
+                avatarUrl:
+                    type: string
+            description: SocialProfile 描述关注/粉丝/好友列表里的用户信息
+tags:
+    - name: RelationHandler

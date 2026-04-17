@@ -1,0 +1,271 @@
+# Generated with protoc-gen-http-swagger
+# https://github.com/hertz-contrib/swagger-generate/blob/main/protoc-gen-http-swagger
+
+openapi: 3.0.3
+info:
+    title: VideoHandler API
+    version: 3.0.3
+paths:
+    /api/v1/video/comments:
+        get:
+            tags:
+                - VideoHandler
+            operationId: VideoHandler_ListVideoComments
+            parameters:
+                - name: video_id
+                  in: query
+                  schema:
+                    type: string
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListVideoCommentsResponseBody'
+    /api/v1/video/hot:
+        get:
+            tags:
+                - VideoHandler
+            operationId: VideoHandler_GetHotVideos
+            parameters:
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetHotVideosResponseBody'
+    /api/v1/video/list:
+        get:
+            tags:
+                - VideoHandler
+            operationId: VideoHandler_ListPublishedVideos
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPublishedVideosResponseBody'
+    /api/v1/video/publish:
+        post:
+            tags:
+                - VideoHandler
+            operationId: VideoHandler_PublishVideo
+            requestBody:
+                description: |-
+                    PublishVideoRequest: 视频文件通过 multipart/form-data 上传
+                     实际 handler 中使用 c.FormFile("video") 获取文件
+                content:
+                    multipart/form-data:
+                        schema:
+                            $ref: '#/components/schemas/PublishVideoRequestForm'
+                    application/x-www-form-urlencoded:
+                        schema:
+                            $ref: '#/components/schemas/PublishVideoRequestForm'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PublishVideoResponseBody'
+    /api/v1/video/search:
+        get:
+            tags:
+                - VideoHandler
+            operationId: VideoHandler_SearchVideos
+            parameters:
+                - name: keywords
+                  in: query
+                  schema:
+                    type: string
+                - name: page_size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_num
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: from_date
+                  in: query
+                  schema:
+                    type: string
+                - name: to_date
+                  in: query
+                  schema:
+                    type: string
+                - name: username
+                  in: query
+                  schema:
+                    type: string
+                - name: sort_by
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SearchVideosResponseBody'
+components:
+    schemas:
+        BaseResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                msg:
+                    type: string
+            description: BaseResponse 表示所有接口共享的返回状态（作业给的接口示例，但是一般不这么写）
+        GetHotVideosResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/VideoList'
+        ListPublishedVideosResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/VideoList'
+        ListVideoCommentsResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/VideoCommentList'
+        PublishVideoRequestForm:
+            type: object
+            properties:
+                title:
+                    type: string
+                description:
+                    type: string
+        PublishVideoResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        SearchVideosResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/VideoList'
+        Video:
+            type: object
+            properties:
+                id:
+                    type: string
+                userId:
+                    type: string
+                videoUrl:
+                    type: string
+                coverUrl:
+                    type: string
+                title:
+                    type: string
+                description:
+                    type: string
+                visitCount:
+                    type: string
+                likeCount:
+                    type: string
+                commentCount:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                deletedAt:
+                    type: string
+            description: Video 为视频数据实体
+        VideoComment:
+            type: object
+            properties:
+                id:
+                    type: string
+                userId:
+                    type: string
+                username:
+                    type: string
+                avatarUrl:
+                    type: string
+                content:
+                    type: string
+                likeCount:
+                    type: string
+                createdAt:
+                    type: string
+            description: 'VideoComment: 视频下的评论信息（包含评论者基础信息）'
+        VideoCommentList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VideoComment'
+                total:
+                    type: string
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+            description: 'VideoCommentList: 视频评论列表（简化版，不含完整 Comment 结构）'
+        VideoList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Video'
+            description: VideoList 同时返回视频和总数
+tags:
+    - name: VideoHandler

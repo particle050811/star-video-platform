@@ -38,7 +38,7 @@ message PublishVideoRequest {
 }
 
 message PublishVideoResponse {
-  BaseResponse base = 1;
+  BaseResponse base = 1 [(.api.body) = "base"];
 }
 
 message ListPublishedVideosRequest {
@@ -48,8 +48,8 @@ message ListPublishedVideosRequest {
 }
 
 message ListPublishedVideosResponse {
-  BaseResponse base = 1;
-  VideoList data = 2;
+  BaseResponse base = 1 [(.api.body) = "base"];
+  VideoList data = 2 [(.api.body) = "data"];
 }
 
 message SearchVideosRequest {
@@ -63,8 +63,8 @@ message SearchVideosRequest {
 }
 
 message SearchVideosResponse {
-  BaseResponse base = 1;
-  VideoList data = 2;
+  BaseResponse base = 1 [(.api.body) = "base"];
+  VideoList data = 2 [(.api.body) = "data"];
 }
 
 // ListVideoCommentsRequest: 获取某视频下的评论列表
@@ -75,8 +75,8 @@ message ListVideoCommentsRequest {
 }
 
 message ListVideoCommentsResponse {
-  BaseResponse base = 1;
-  VideoCommentList data = 2;
+  BaseResponse base = 1 [(.api.body) = "base"];
+  VideoCommentList data = 2 [(.api.body) = "data"];
 }
 
 // VideoCommentList: 视频评论列表（简化版，不含完整 Comment 结构）
@@ -105,8 +105,8 @@ message GetHotVideosRequest {
 }
 
 message GetHotVideosResponse {
-  BaseResponse base = 1;
-  VideoList data = 2;
+  BaseResponse base = 1 [(.api.body) = "base"];
+  VideoList data = 2 [(.api.body) = "data"];
 }
 
 // ---------- Handler 定义 ----------
