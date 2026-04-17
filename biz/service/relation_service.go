@@ -16,6 +16,41 @@ const (
 	relationActionUnfollow = relation.RelationActionType_RELATION_ACTION_TYPE_UNFOLLOW
 )
 
+type relationRepository interface {
+	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	FollowUser(ctx context.Context, fromUserID, toUserID uint) error
+	UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error)
+	ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
+	ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
+	ListFriends(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
+}
+
+type defaultRelationRepository struct{}
+
+func (defaultRelationRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+	return repository.GetUserByID(ctx, userID)
+}
+
+func (defaultRelationRepository) FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
+	return repository.FollowUser(ctx, fromUserID, toUserID)
+}
+
+func (defaultRelationRepository) UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) {
+	return repository.UnfollowUser(ctx, fromUserID, toUserID)
+}
+
+func (defaultRelationRepository) ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
+	return repository.ListFollowings(ctx, userID, offset, limit)
+}
+
+func (defaultRelationRepository) ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
+	return repository.ListFollowers(ctx, userID, offset, limit)
+}
+
+func (defaultRelationRepository) ListFriends(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
+	return repository.ListFriends(ctx, userID, offset, limit)
+}
+
 type relationService struct {
 	repo relationRepository
 }

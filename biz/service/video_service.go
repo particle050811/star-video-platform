@@ -16,14 +16,94 @@ import (
 	"gorm.io/gorm"
 )
 
+type videoRepository interface {
+	CreateVideo(ctx context.Context, video *model.Video) error
+	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	ListUserIDsByUsername(ctx context.Context, username string) ([]uint, error)
+	GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error)
+	ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error)
+	SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error)
+	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
+	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
+	ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error)
+}
+
+type videoUploadProvider interface {
+	SaveFile(file *multipart.FileHeader, savePath string) error
+	PrepareVideo(userID uint, originalFilename string) (savePath, videoURL string, err error)
+	PrepareVideoCover(userID uint, originalFilename string) (savePath, coverURL string, err error)
+	RemoveVideo(videoURL string) error
+	RemoveVideoCover(coverURL string) error
+}
+
+type defaultVideoRepository struct{}
+
+func (defaultVideoRepository) CreateVideo(ctx context.Context, video *model.Video) error {
+	return repository.CreateVideo(ctx, video)
+}
+
+func (defaultVideoRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+	return repository.GetUserByID(ctx, userID)
+}
+
+func (defaultVideoRepository) ListUserIDsByUsername(ctx context.Context, username string) ([]uint, error) {
+	return repository.ListUserIDsByUsername(ctx, username)
+}
+
+func (defaultVideoRepository) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
+	return repository.GetVideoByID(ctx, videoID)
+}
+
+func (defaultVideoRepository) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
+	return repository.ListVideosByUserID(ctx, userID, offset, limit)
+}
+
+func (defaultVideoRepository) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
+	return repository.SearchVideos(ctx, keywords, userIDs, fromDate, toDate, sortBy, offset, limit)
+}
+
+func (defaultVideoRepository) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error) {
+	return repository.ListVideoComments(ctx, videoID, cursor, limit)
+}
+
+func (defaultVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error) {
+	return repository.ListUserSnapshotsByIDs(ctx, userIDs)
+}
+
+func (defaultVideoRepository) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
+	return repository.ListHotVideos(ctx, offset, limit)
+}
+
+type defaultVideoUploadProvider struct{}
+
+func (defaultVideoUploadProvider) SaveFile(file *multipart.FileHeader, savePath string) error {
+	return upload.SaveFile(file, savePath)
+}
+
+func (defaultVideoUploadProvider) PrepareVideo(userID uint, originalFilename string) (savePath, videoURL string, err error) {
+	return upload.PrepareVideo(userID, originalFilename)
+}
+
+func (defaultVideoUploadProvider) PrepareVideoCover(userID uint, originalFilename string) (savePath, coverURL string, err error) {
+	return upload.PrepareVideoCover(userID, originalFilename)
+}
+
+func (defaultVideoUploadProvider) RemoveVideo(videoURL string) error {
+	return upload.RemoveVideo(videoURL)
+}
+
+func (defaultVideoUploadProvider) RemoveVideoCover(coverURL string) error {
+	return upload.RemoveVideoCover(coverURL)
+}
+
 type videoService struct {
 	repo   videoRepository
-	upload uploadProvider
+	upload videoUploadProvider
 }
 
 var Video = videoService{
 	repo:   defaultVideoRepository{},
-	upload: defaultUploadProvider{},
+	upload: defaultVideoUploadProvider{},
 }
 
 func (s videoService) PublishVideo(ctx context.Context, userID uint, title, description string, videoFile, coverFile *multipart.FileHeader) (err error) {

@@ -7,11 +7,82 @@ import (
 	"strconv"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/user"
+	"video-platform/biz/repository"
 	"video-platform/pkg/auth"
 	"video-platform/pkg/upload"
 
 	"gorm.io/gorm"
 )
+
+type userRepository interface {
+	CreateUser(ctx context.Context, user *model.User) error
+	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
+	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error
+}
+
+type authProvider interface {
+	HashPassword(password string) (string, error)
+	CheckPassword(hashedPassword, password string) error
+	GenerateTokenPair(userID uint) (accessToken, refreshToken string, err error)
+	RefreshTokens(refreshToken string) (newAccessToken, newRefreshToken string, err error)
+}
+
+type uploadProvider interface {
+	PrepareAvatar(userID uint, originalFilename string) (savePath, avatarURL string, err error)
+	SaveFile(file *multipart.FileHeader, savePath string) error
+	RemoveAvatar(avatarURL string) error
+}
+
+type defaultUserRepository struct{}
+
+func (defaultUserRepository) CreateUser(ctx context.Context, user *model.User) error {
+	return repository.CreateUser(ctx, user)
+}
+
+func (defaultUserRepository) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
+	return repository.GetUserByUsername(ctx, username)
+}
+
+func (defaultUserRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+	return repository.GetUserByID(ctx, userID)
+}
+
+func (defaultUserRepository) UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error {
+	return repository.UpdateUserAvatar(ctx, userID, avatarURL)
+}
+
+type defaultAuthProvider struct{}
+
+func (defaultAuthProvider) HashPassword(password string) (string, error) {
+	return auth.HashPassword(password)
+}
+
+func (defaultAuthProvider) CheckPassword(hashedPassword, password string) error {
+	return auth.CheckPassword(hashedPassword, password)
+}
+
+func (defaultAuthProvider) GenerateTokenPair(userID uint) (accessToken, refreshToken string, err error) {
+	return auth.GenerateTokenPair(userID)
+}
+
+func (defaultAuthProvider) RefreshTokens(refreshToken string) (newAccessToken, newRefreshToken string, err error) {
+	return auth.RefreshTokens(refreshToken)
+}
+
+type defaultUploadProvider struct{}
+
+func (defaultUploadProvider) PrepareAvatar(userID uint, originalFilename string) (savePath, avatarURL string, err error) {
+	return upload.PrepareAvatar(userID, originalFilename)
+}
+
+func (defaultUploadProvider) SaveFile(file *multipart.FileHeader, savePath string) error {
+	return upload.SaveFile(file, savePath)
+}
+
+func (defaultUploadProvider) RemoveAvatar(avatarURL string) error {
+	return upload.RemoveAvatar(avatarURL)
+}
 
 type userService struct {
 	repo   userRepository
