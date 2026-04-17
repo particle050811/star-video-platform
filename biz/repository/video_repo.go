@@ -6,16 +6,6 @@ import (
 	"video-platform/biz/dal/model"
 )
 
-type VideoQuery struct {
-	Keywords string
-	UserIDs  []uint
-	FromDate int64
-	ToDate   int64
-	SortBy   string
-	Offset   int
-	Limit    int
-}
-
 func CreateVideo(ctx context.Context, video *model.Video) error {
 	return db.CreateVideo(ctx, video)
 }
@@ -28,15 +18,15 @@ func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]
 	return db.ListVideosByUserID(ctx, userID, offset, limit)
 }
 
-func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error) {
+func SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
 	return db.SearchVideos(ctx, db.VideoQuery{
-		Keywords: params.Keywords,
-		UserIDs:  params.UserIDs,
-		FromDate: params.FromDate,
-		ToDate:   params.ToDate,
-		SortBy:   params.SortBy,
-		Offset:   params.Offset,
-		Limit:    params.Limit,
+		Keywords: keywords,
+		UserIDs:  userIDs,
+		FromDate: fromDate,
+		ToDate:   toDate,
+		SortBy:   sortBy,
+		Offset:   offset,
+		Limit:    limit,
 	})
 }
 

@@ -109,15 +109,7 @@ func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoLi
 		userIDs = foundUserIDs
 	}
 
-	videos, err := repository.SearchVideos(ctx, repository.VideoQuery{
-		Keywords: req.Keywords,
-		UserIDs:  userIDs,
-		FromDate: req.FromDate,
-		ToDate:   req.ToDate,
-		SortBy:   req.SortBy,
-		Offset:   offset,
-		Limit:    limit,
-	})
+	videos, err := repository.SearchVideos(ctx, req.Keywords, userIDs, req.FromDate, req.ToDate, req.SortBy, offset, limit)
 	if err != nil {
 		return nil, err
 	}
