@@ -88,12 +88,12 @@ func TestRelationDBListFollowingIDs(t *testing.T) {
 	defer cleanup()
 
 	countRows := sqlmock.NewRows([]string{"count"}).AddRow(2)
-	idRows := sqlmock.NewRows([]string{"to_user_id"}).AddRow(3).AddRow(2)
+	idRows := sqlmock.NewRows([]string{"relation_id", "user_id"}).AddRow(10, 3).AddRow(9, 2)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `relations` WHERE from_user_id = ?")).
 		WithArgs(1).
 		WillReturnRows(countRows)
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT `to_user_id` FROM `relations` WHERE from_user_id = ? ORDER BY id DESC LIMIT ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id AS relation_id, to_user_id AS user_id FROM `relations` WHERE from_user_id = ? ORDER BY id DESC LIMIT ?")).
 		WithArgs(1, 20).
 		WillReturnRows(idRows)
 
@@ -104,7 +104,7 @@ func TestRelationDBListFollowingIDs(t *testing.T) {
 	if total != 2 {
 		t.Fatalf("expected total 2, got %d", total)
 	}
-	if len(got) != 2 || got[0] != 3 || got[1] != 2 {
+	if len(got) != 2 || got[0].RelationID != 10 || got[0].UserID != 3 || got[1].RelationID != 9 || got[1].UserID != 2 {
 		t.Fatalf("unexpected ids: %+v", got)
 	}
 

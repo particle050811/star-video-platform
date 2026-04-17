@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 	"video-platform/biz/dal/model"
+	"video-platform/biz/repository"
 
 	"gorm.io/gorm"
 )
@@ -102,7 +103,11 @@ func TestBuildVideoList(t *testing.T) {
 		},
 	}
 
-	got := buildVideoList(videos)
+	got := buildVideoList(&repository.VideoListResult{
+		Items:      videos,
+		NextCursor: 2,
+		HasMore:    true,
+	})
 	if len(got.Items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(got.Items))
 	}
@@ -117,5 +122,8 @@ func TestBuildVideoList(t *testing.T) {
 	}
 	if got.Items[1].Title != "second" {
 		t.Fatalf("expected second item title %q, got %q", "second", got.Items[1].Title)
+	}
+	if got.NextCursor != "2" || !got.HasMore {
+		t.Fatalf("unexpected cursor response: %+v", got)
 	}
 }

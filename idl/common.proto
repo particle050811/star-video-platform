@@ -10,8 +10,8 @@ message BaseResponse {
   string msg = 2;
 }
 
-// PageParams 统一分页请求参数，page_num 默认为 0
-message PageParams {
-  int32 page_num = 1;
-  int32 page_size = 2;
+// CursorParams 统一游标分页请求参数
+message CursorParams {
+  string cursor = 1;
+  int32 limit = 2;
 }

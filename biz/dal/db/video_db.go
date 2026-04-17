@@ -15,7 +15,7 @@ type VideoQuery struct {
 	FromDate int64
 	ToDate   int64
 	SortBy   string
-	Offset   int
+	Cursor   uint
 	Limit    int
 }
 
@@ -48,11 +48,11 @@ func (v VideoDB) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, 
 	return &video, nil
 }
 
-func (v VideoDB) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
+func (v VideoDB) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {
 	query := v.gormDB().WithContext(ctx).Model(&model.Video{}).Where("user_id = ?", userID)
 
 	videos := make([]model.Video, 0)
-	if err := query.Order("created_at DESC, id DESC").Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
+	if err := query.Order("created_at DESC, id DESC").Offset(int(cursor)).Limit(limit).Find(&videos).Error; err != nil {
 		return nil, err
 	}
 
@@ -88,18 +88,18 @@ func (v VideoDB) SearchVideos(ctx context.Context, params VideoQuery) ([]model.V
 		orderBy = "videos.like_count DESC, videos.visit_count DESC, videos.id DESC"
 	}
 
-	if err := query.Order(orderBy).Offset(params.Offset).Limit(params.Limit).Find(&videos).Error; err != nil {
+	if err := query.Order(orderBy).Offset(int(params.Cursor)).Limit(params.Limit).Find(&videos).Error; err != nil {
 		return nil, err
 	}
 
 	return videos, nil
 }
 
-func (v VideoDB) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
+func (v VideoDB) ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
 	query := v.gormDB().WithContext(ctx).Model(&model.Video{})
 
 	videos := make([]model.Video, 0)
-	if err := query.Order("like_count DESC, visit_count DESC, id DESC").Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
+	if err := query.Order("like_count DESC, visit_count DESC, id DESC").Offset(int(cursor)).Limit(limit).Find(&videos).Error; err != nil {
 		return nil, err
 	}
 
@@ -114,14 +114,14 @@ func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	return Videos.GetVideoByID(ctx, videoID)
 }
 
-func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	return Videos.ListVideosByUserID(ctx, userID, offset, limit)
+func ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {
+	return Videos.ListVideosByUserID(ctx, userID, cursor, limit)
 }
 
 func SearchVideos(ctx context.Context, params VideoQuery) ([]model.Video, error) {
 	return Videos.SearchVideos(ctx, params)
 }
 
-func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	return Videos.ListHotVideos(ctx, offset, limit)
+func ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
+	return Videos.ListHotVideos(ctx, cursor, limit)
 }

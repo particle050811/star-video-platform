@@ -38,12 +38,11 @@ paths:
                 - VideoHandler
             operationId: VideoHandler_GetHotVideos
             parameters:
-                - name: page_num
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_size
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -65,12 +64,11 @@ paths:
                   in: query
                   schema:
                     type: string
-                - name: page_num
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_size
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -115,12 +113,11 @@ paths:
                   in: query
                   schema:
                     type: string
-                - name: page_size
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_num
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -254,9 +251,9 @@ components:
                         $ref: '#/components/schemas/VideoComment'
                 total:
                     type: string
-                nextCursor:
+                next_cursor:
                     type: string
-                hasMore:
+                has_more:
                     type: boolean
             description: 'VideoCommentList: 视频评论列表（简化版，不含完整 Comment 结构）'
         VideoList:
@@ -266,6 +263,10 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Video'
+                next_cursor:
+                    type: string
+                has_more:
+                    type: boolean
             description: VideoList 同时返回视频和总数
 tags:
     - name: VideoHandler

@@ -21,3 +21,14 @@ func Normalize(pageNum, pageSize int32) (offset, limit int) {
 	offset = int((pageNum - 1) * pageSize)
 	return offset, limit
 }
+
+func NormalizeLimit(limit int32) int {
+	if limit <= 0 {
+		limit = DefaultPageSize
+	}
+	if limit > MaxPageSize {
+		limit = MaxPageSize
+	}
+
+	return int(limit)
+}

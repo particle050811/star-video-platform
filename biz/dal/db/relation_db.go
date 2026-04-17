@@ -11,6 +11,11 @@ type RelationDB struct {
 	db *gorm.DB
 }
 
+type RelationIDItem struct {
+	RelationID uint
+	UserID     uint
+}
+
 func NewRelationDB(gdb *gorm.DB) RelationDB {
 	return RelationDB{db: gdb}
 }
@@ -81,7 +86,7 @@ func (r RelationDB) UnfollowUser(ctx context.Context, fromUserID, toUserID uint)
 	return deleted, err
 }
 
-func (r RelationDB) ListFollowingIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
+func (r RelationDB) ListFollowingIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
 	var total int64
 	if err := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
 		Where("from_user_id = ?", userID).
@@ -89,25 +94,30 @@ func (r RelationDB) ListFollowingIDs(ctx context.Context, userID uint, offset, l
 		return nil, 0, err
 	}
 
-	userIDs := make([]uint, 0)
+	items := make([]RelationIDItem, 0)
 	if total == 0 {
-		return userIDs, 0, nil
+		return items, 0, nil
 	}
 
-	err := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
-		Where("from_user_id = ?", userID).
+	query := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
+		Where("from_user_id = ?", userID)
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
+	}
+
+	err := query.
+		Select("id AS relation_id, to_user_id AS user_id").
 		Order("id DESC").
-		Offset(offset).
 		Limit(limit).
-		Pluck("to_user_id", &userIDs).Error
+		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return userIDs, total, nil
+	return items, total, nil
 }
 
-func (r RelationDB) ListFollowerIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
+func (r RelationDB) ListFollowerIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
 	var total int64
 	if err := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
 		Where("to_user_id = ?", userID).
@@ -115,25 +125,30 @@ func (r RelationDB) ListFollowerIDs(ctx context.Context, userID uint, offset, li
 		return nil, 0, err
 	}
 
-	userIDs := make([]uint, 0)
+	items := make([]RelationIDItem, 0)
 	if total == 0 {
-		return userIDs, 0, nil
+		return items, 0, nil
 	}
 
-	err := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
-		Where("to_user_id = ?", userID).
+	query := r.gormDB().WithContext(ctx).Model(&model.Relation{}).
+		Where("to_user_id = ?", userID)
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
+	}
+
+	err := query.
+		Select("id AS relation_id, from_user_id AS user_id").
 		Order("id DESC").
-		Offset(offset).
 		Limit(limit).
-		Pluck("from_user_id", &userIDs).Error
+		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return userIDs, total, nil
+	return items, total, nil
 }
 
-func (r RelationDB) ListFriendIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
+func (r RelationDB) ListFriendIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
 	baseQuery := r.gormDB().WithContext(ctx).
 		Table("relations AS r1").
 		Joins("JOIN relations AS r2 ON r1.to_user_id = r2.from_user_id AND r1.from_user_id = r2.to_user_id").
@@ -144,24 +159,29 @@ func (r RelationDB) ListFriendIDs(ctx context.Context, userID uint, offset, limi
 		return nil, 0, err
 	}
 
-	userIDs := make([]uint, 0)
+	items := make([]RelationIDItem, 0)
 	if total == 0 {
-		return userIDs, 0, nil
+		return items, 0, nil
 	}
 
-	err := r.gormDB().WithContext(ctx).
+	query := r.gormDB().WithContext(ctx).
 		Table("relations AS r1").
 		Joins("JOIN relations AS r2 ON r1.to_user_id = r2.from_user_id AND r1.from_user_id = r2.to_user_id").
-		Where("r1.from_user_id = ?", userID).
+		Where("r1.from_user_id = ?", userID)
+	if cursor > 0 {
+		query = query.Where("r1.id < ?", cursor)
+	}
+
+	err := query.
+		Select("r1.id AS relation_id, r1.to_user_id AS user_id").
 		Order("r1.id DESC").
-		Offset(offset).
 		Limit(limit).
-		Pluck("r1.to_user_id", &userIDs).Error
+		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return userIDs, total, nil
+	return items, total, nil
 }
 
 func FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
@@ -172,14 +192,14 @@ func UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) 
 	return Relations.UnfollowUser(ctx, fromUserID, toUserID)
 }
 
-func ListFollowingIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return Relations.ListFollowingIDs(ctx, userID, offset, limit)
+func ListFollowingIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
+	return Relations.ListFollowingIDs(ctx, userID, cursor, limit)
 }
 
-func ListFollowerIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return Relations.ListFollowerIDs(ctx, userID, offset, limit)
+func ListFollowerIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
+	return Relations.ListFollowerIDs(ctx, userID, cursor, limit)
 }
 
-func ListFriendIDs(ctx context.Context, userID uint, offset, limit int) ([]uint, int64, error) {
-	return Relations.ListFriendIDs(ctx, userID, offset, limit)
+func ListFriendIDs(ctx context.Context, userID uint, cursor uint, limit int) ([]RelationIDItem, int64, error) {
+	return Relations.ListFriendIDs(ctx, userID, cursor, limit)
 }

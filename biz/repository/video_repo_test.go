@@ -11,9 +11,9 @@ import (
 type fakeVideoDBStore struct {
 	createVideoFn        func(ctx context.Context, video *model.Video) error
 	getVideoByIDFn       func(ctx context.Context, videoID uint) (*model.Video, error)
-	listVideosByUserIDFn func(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error)
+	listVideosByUserIDFn func(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error)
 	searchVideosFn       func(ctx context.Context, params db.VideoQuery) ([]model.Video, error)
-	listHotVideosFn      func(ctx context.Context, offset, limit int) ([]model.Video, error)
+	listHotVideosFn      func(ctx context.Context, cursor uint, limit int) ([]model.Video, error)
 }
 
 func (f fakeVideoDBStore) CreateVideo(ctx context.Context, video *model.Video) error {
@@ -24,16 +24,16 @@ func (f fakeVideoDBStore) GetVideoByID(ctx context.Context, videoID uint) (*mode
 	return f.getVideoByIDFn(ctx, videoID)
 }
 
-func (f fakeVideoDBStore) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	return f.listVideosByUserIDFn(ctx, userID, offset, limit)
+func (f fakeVideoDBStore) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {
+	return f.listVideosByUserIDFn(ctx, userID, cursor, limit)
 }
 
 func (f fakeVideoDBStore) SearchVideos(ctx context.Context, params db.VideoQuery) ([]model.Video, error) {
 	return f.searchVideosFn(ctx, params)
 }
 
-func (f fakeVideoDBStore) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	return f.listHotVideosFn(ctx, offset, limit)
+func (f fakeVideoDBStore) ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
+	return f.listHotVideosFn(ctx, cursor, limit)
 }
 
 type fakeVideoCacheStore struct {
@@ -41,8 +41,8 @@ type fakeVideoCacheStore struct {
 	getVideoDetailCacheFn      func(ctx context.Context, videoID uint, dest any) (bool, error)
 	setVideoDetailCacheFn      func(ctx context.Context, videoID uint, value any) error
 	getHotVideoCacheVersionFn  func(ctx context.Context) (int64, error)
-	getHotVideoCacheFn         func(ctx context.Context, version int64, offset, limit int, dest any) (bool, error)
-	setHotVideoCacheFn         func(ctx context.Context, version int64, offset, limit int, value any) error
+	getHotVideoCacheFn         func(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error)
+	setHotVideoCacheFn         func(ctx context.Context, version int64, cursor uint, limit int, value any) error
 }
 
 func (f fakeVideoCacheStore) BumpHotVideoCacheVersion(ctx context.Context) error {
@@ -61,12 +61,12 @@ func (f fakeVideoCacheStore) GetHotVideoCacheVersion(ctx context.Context) (int64
 	return f.getHotVideoCacheVersionFn(ctx)
 }
 
-func (f fakeVideoCacheStore) GetHotVideoCache(ctx context.Context, version int64, offset, limit int, dest any) (bool, error) {
-	return f.getHotVideoCacheFn(ctx, version, offset, limit, dest)
+func (f fakeVideoCacheStore) GetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error) {
+	return f.getHotVideoCacheFn(ctx, version, cursor, limit, dest)
 }
 
-func (f fakeVideoCacheStore) SetHotVideoCache(ctx context.Context, version int64, offset, limit int, value any) error {
-	return f.setHotVideoCacheFn(ctx, version, offset, limit, value)
+func (f fakeVideoCacheStore) SetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, value any) error {
+	return f.setHotVideoCacheFn(ctx, version, cursor, limit, value)
 }
 
 func TestVideoStoreCreateVideoBumpsCacheVersion(t *testing.T) {
@@ -171,27 +171,30 @@ func TestVideoStoreSearchVideosBuildsQuery(t *testing.T) {
 				if len(params.UserIDs) != 2 || params.UserIDs[0] != 1 || params.UserIDs[1] != 2 {
 					t.Fatalf("unexpected userIDs: %+v", params.UserIDs)
 				}
-				if params.Offset != 10 || params.Limit != 20 {
+				if params.Cursor != 10 || params.Limit != 2 {
 					t.Fatalf("unexpected pagination: %+v", params)
 				}
-				return []model.Video{{ID: 1, Title: "result"}}, nil
+				return []model.Video{{ID: 1, Title: "result"}, {ID: 2, Title: "next"}}, nil
 			},
 		},
 	}
 
-	got, err := store.SearchVideos(context.Background(), "go", []uint{1, 2}, 100, 200, "hot", 10, 20)
+	got, err := store.SearchVideos(context.Background(), "go", []uint{1, 2}, 100, 200, "hot", 10, 1)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if len(got) != 1 || got[0].Title != "result" {
+	if len(got.Items) != 1 || got.Items[0].Title != "result" {
 		t.Fatalf("unexpected result: %+v", got)
+	}
+	if got.NextCursor != 11 || !got.HasMore {
+		t.Fatalf("unexpected cursor result: %+v", got)
 	}
 }
 
 func TestVideoStoreListHotVideosUsesVersionedCache(t *testing.T) {
 	store := videoStore{
 		db: fakeVideoDBStore{
-			listHotVideosFn: func(ctx context.Context, offset, limit int) ([]model.Video, error) {
+			listHotVideosFn: func(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
 				t.Fatal("db should not be called on cache hit")
 				return nil, nil
 			},
@@ -200,12 +203,12 @@ func TestVideoStoreListHotVideosUsesVersionedCache(t *testing.T) {
 			getHotVideoCacheVersionFn: func(ctx context.Context) (int64, error) {
 				return 3, nil
 			},
-			getHotVideoCacheFn: func(ctx context.Context, version int64, offset, limit int, dest any) (bool, error) {
-				if version != 3 || offset != 10 || limit != 20 {
-					t.Fatalf("unexpected cache params version=%d offset=%d limit=%d", version, offset, limit)
+			getHotVideoCacheFn: func(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error) {
+				if version != 3 || cursor != 10 || limit != 20 {
+					t.Fatalf("unexpected cache params version=%d cursor=%d limit=%d", version, cursor, limit)
 				}
-				videos := dest.(*[]model.Video)
-				*videos = []model.Video{{ID: 8, Title: "cached hot"}}
+				result := dest.(*VideoListResult)
+				*result = VideoListResult{Items: []model.Video{{ID: 8, Title: "cached hot"}}}
 				return true, nil
 			},
 		},
@@ -215,42 +218,48 @@ func TestVideoStoreListHotVideosUsesVersionedCache(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if len(got) != 1 || got[0].Title != "cached hot" {
+	if len(got.Items) != 1 || got.Items[0].Title != "cached hot" {
 		t.Fatalf("unexpected result: %+v", got)
 	}
 }
 
 func TestVideoStoreListHotVideosFallsBackToDBAndSetsCache(t *testing.T) {
-	var cachedValue []model.Video
+	var cachedValue VideoListResult
 
 	store := videoStore{
 		db: fakeVideoDBStore{
-			listHotVideosFn: func(ctx context.Context, offset, limit int) ([]model.Video, error) {
-				return []model.Video{{ID: 9, Title: "db hot"}}, nil
+			listHotVideosFn: func(ctx context.Context, cursor uint, limit int) ([]model.Video, error) {
+				if cursor != 0 || limit != 2 {
+					t.Fatalf("unexpected db params cursor=%d limit=%d", cursor, limit)
+				}
+				return []model.Video{{ID: 9, Title: "db hot"}, {ID: 8, Title: "next hot"}}, nil
 			},
 		},
 		cache: fakeVideoCacheStore{
 			getHotVideoCacheVersionFn: func(ctx context.Context) (int64, error) {
 				return 7, nil
 			},
-			getHotVideoCacheFn: func(ctx context.Context, version int64, offset, limit int, dest any) (bool, error) {
+			getHotVideoCacheFn: func(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error) {
 				return false, nil
 			},
-			setHotVideoCacheFn: func(ctx context.Context, version int64, offset, limit int, value any) error {
-				cachedValue = value.([]model.Video)
+			setHotVideoCacheFn: func(ctx context.Context, version int64, cursor uint, limit int, value any) error {
+				cachedValue = value.(VideoListResult)
 				return nil
 			},
 		},
 	}
 
-	got, err := store.ListHotVideos(context.Background(), 0, 20)
+	got, err := store.ListHotVideos(context.Background(), 0, 1)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if len(got) != 1 || got[0].Title != "db hot" {
+	if len(got.Items) != 1 || got.Items[0].Title != "db hot" {
 		t.Fatalf("unexpected result: %+v", got)
 	}
-	if len(cachedValue) != 1 || cachedValue[0].ID != 9 {
+	if got.NextCursor != 1 || !got.HasMore {
+		t.Fatalf("unexpected cursor result: %+v", got)
+	}
+	if len(cachedValue.Items) != 1 || cachedValue.Items[0].ID != 9 {
 		t.Fatalf("unexpected cached value: %+v", cachedValue)
 	}
 }

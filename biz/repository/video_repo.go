@@ -10,9 +10,9 @@ import (
 type videoDBStore interface {
 	CreateVideo(ctx context.Context, video *model.Video) error
 	GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error)
-	ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error)
+	ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error)
 	SearchVideos(ctx context.Context, params dbdal.VideoQuery) ([]model.Video, error)
-	ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error)
+	ListHotVideos(ctx context.Context, cursor uint, limit int) ([]model.Video, error)
 }
 
 type videoCacheStore interface {
@@ -20,13 +20,19 @@ type videoCacheStore interface {
 	GetVideoDetailCache(ctx context.Context, videoID uint, dest any) (bool, error)
 	SetVideoDetailCache(ctx context.Context, videoID uint, value any) error
 	GetHotVideoCacheVersion(ctx context.Context) (int64, error)
-	GetHotVideoCache(ctx context.Context, version int64, offset, limit int, dest any) (bool, error)
-	SetHotVideoCache(ctx context.Context, version int64, offset, limit int, value any) error
+	GetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, dest any) (bool, error)
+	SetHotVideoCache(ctx context.Context, version int64, cursor uint, limit int, value any) error
 }
 
 type videoStore struct {
 	db    videoDBStore
 	cache videoCacheStore
+}
+
+type VideoListResult struct {
+	Items      []model.Video
+	NextCursor uint
+	HasMore    bool
 }
 
 var videos = videoStore{
@@ -42,16 +48,16 @@ func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	return videos.GetVideoByID(ctx, videoID)
 }
 
-func ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	return videos.ListVideosByUserID(ctx, userID, offset, limit)
+func ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*VideoListResult, error) {
+	return videos.ListVideosByUserID(ctx, userID, cursor, limit)
 }
 
-func SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
-	return videos.SearchVideos(ctx, keywords, userIDs, fromDate, toDate, sortBy, offset, limit)
+func SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*VideoListResult, error) {
+	return videos.SearchVideos(ctx, keywords, userIDs, fromDate, toDate, sortBy, cursor, limit)
 }
 
-func ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	return videos.ListHotVideos(ctx, offset, limit)
+func ListHotVideos(ctx context.Context, cursor uint, limit int) (*VideoListResult, error) {
+	return videos.ListHotVideos(ctx, cursor, limit)
 }
 
 func (s videoStore) CreateVideo(ctx context.Context, video *model.Video) error {
@@ -78,38 +84,67 @@ func (s videoStore) GetVideoByID(ctx context.Context, videoID uint) (*model.Vide
 	return fetched, nil
 }
 
-func (s videoStore) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	return s.db.ListVideosByUserID(ctx, userID, offset, limit)
+func (s videoStore) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*VideoListResult, error) {
+	videos, err := s.db.ListVideosByUserID(ctx, userID, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildVideoListResult(videos, cursor, limit), nil
 }
 
-func (s videoStore) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
-	return s.db.SearchVideos(ctx, dbdal.VideoQuery{
+func (s videoStore) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*VideoListResult, error) {
+	videos, err := s.db.SearchVideos(ctx, dbdal.VideoQuery{
 		Keywords: keywords,
 		UserIDs:  userIDs,
 		FromDate: fromDate,
 		ToDate:   toDate,
 		SortBy:   sortBy,
-		Offset:   offset,
-		Limit:    limit,
+		Cursor:   cursor,
+		Limit:    limit + 1,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return buildVideoListResult(videos, cursor, limit), nil
 }
 
-func (s videoStore) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
+func (s videoStore) ListHotVideos(ctx context.Context, cursor uint, limit int) (*VideoListResult, error) {
 	version, err := s.cache.GetHotVideoCacheVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var videos []model.Video
-	if ok, err := s.cache.GetHotVideoCache(ctx, version, offset, limit, &videos); err == nil && ok {
-		return videos, nil
+	var result VideoListResult
+	if ok, err := s.cache.GetHotVideoCache(ctx, version, cursor, limit, &result); err == nil && ok {
+		return &result, nil
 	}
 
-	videos, err = s.db.ListHotVideos(ctx, offset, limit)
+	videoItems, err := s.db.ListHotVideos(ctx, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 
-	_ = s.cache.SetHotVideoCache(ctx, version, offset, limit, videos)
-	return videos, nil
+	result = *buildVideoListResult(videoItems, cursor, limit)
+	_ = s.cache.SetHotVideoCache(ctx, version, cursor, limit, result)
+	return &result, nil
+}
+
+func buildVideoListResult(videos []model.Video, cursor uint, limit int) *VideoListResult {
+	hasMore := len(videos) > limit
+	if hasMore {
+		videos = videos[:limit]
+	}
+
+	nextCursor := uint(0)
+	if hasMore {
+		nextCursor = cursor + uint(len(videos))
+	}
+
+	return &VideoListResult{
+		Items:      videos,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}
 }

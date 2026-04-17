@@ -14,8 +14,10 @@ import (
 const relationCacheTTL = 3 * time.Minute
 
 type RelationIDListCache struct {
-	UserIDs []uint `json:"user_ids"`
-	Total   int64  `json:"total"`
+	UserIDs    []uint `json:"user_ids"`
+	Total      int64  `json:"total"`
+	NextCursor uint   `json:"next_cursor"`
+	HasMore    bool   `json:"has_more"`
 }
 
 type RelationCache struct {
@@ -32,24 +34,24 @@ func relationFollowingCacheVersionKey(userID uint) string {
 	return fmt.Sprintf("relation:following:version:%d", userID)
 }
 
-func relationFollowingCacheKey(userID uint, version int64, offset, limit int) string {
-	return fmt.Sprintf("relation:following:%d:v%d:%d:%d", userID, version, offset, limit)
+func relationFollowingCacheKey(userID uint, version int64, cursor uint, limit int) string {
+	return fmt.Sprintf("relation:following:%d:v%d:%d:%d", userID, version, cursor, limit)
 }
 
 func relationFollowerCacheVersionKey(userID uint) string {
 	return fmt.Sprintf("relation:follower:version:%d", userID)
 }
 
-func relationFollowerCacheKey(userID uint, version int64, offset, limit int) string {
-	return fmt.Sprintf("relation:follower:%d:v%d:%d:%d", userID, version, offset, limit)
+func relationFollowerCacheKey(userID uint, version int64, cursor uint, limit int) string {
+	return fmt.Sprintf("relation:follower:%d:v%d:%d:%d", userID, version, cursor, limit)
 }
 
 func relationFriendCacheVersionKey(userID uint) string {
 	return fmt.Sprintf("relation:friend:version:%d", userID)
 }
 
-func relationFriendCacheKey(userID uint, version int64, offset, limit int) string {
-	return fmt.Sprintf("relation:friend:%d:v%d:%d:%d", userID, version, offset, limit)
+func relationFriendCacheKey(userID uint, version int64, cursor uint, limit int) string {
+	return fmt.Sprintf("relation:friend:%d:v%d:%d:%d", userID, version, cursor, limit)
 }
 
 func (r RelationCache) redisClient() *redis.Client {
@@ -133,36 +135,36 @@ func (r RelationCache) GetRelationFollowingCacheVersion(ctx context.Context, use
 	return r.getCacheVersion(ctx, relationFollowingCacheVersionKey(userID))
 }
 
-func (r RelationCache) GetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return r.getRelationIDListCache(ctx, relationFollowingCacheKey(userID, version, offset, limit))
+func (r RelationCache) GetRelationFollowingCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return r.getRelationIDListCache(ctx, relationFollowingCacheKey(userID, version, cursor, limit))
 }
 
 func (r RelationCache) GetRelationFollowerCacheVersion(ctx context.Context, userID uint) (int64, error) {
 	return r.getCacheVersion(ctx, relationFollowerCacheVersionKey(userID))
 }
 
-func (r RelationCache) GetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return r.getRelationIDListCache(ctx, relationFollowerCacheKey(userID, version, offset, limit))
+func (r RelationCache) GetRelationFollowerCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return r.getRelationIDListCache(ctx, relationFollowerCacheKey(userID, version, cursor, limit))
 }
 
 func (r RelationCache) GetRelationFriendCacheVersion(ctx context.Context, userID uint) (int64, error) {
 	return r.getCacheVersion(ctx, relationFriendCacheVersionKey(userID))
 }
 
-func (r RelationCache) GetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return r.getRelationIDListCache(ctx, relationFriendCacheKey(userID, version, offset, limit))
+func (r RelationCache) GetRelationFriendCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return r.getRelationIDListCache(ctx, relationFriendCacheKey(userID, version, cursor, limit))
 }
 
-func (r RelationCache) SetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return r.setRelationIDListCache(ctx, relationFollowingCacheKey(userID, version, offset, limit), value)
+func (r RelationCache) SetRelationFollowingCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return r.setRelationIDListCache(ctx, relationFollowingCacheKey(userID, version, cursor, limit), value)
 }
 
-func (r RelationCache) SetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return r.setRelationIDListCache(ctx, relationFollowerCacheKey(userID, version, offset, limit), value)
+func (r RelationCache) SetRelationFollowerCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return r.setRelationIDListCache(ctx, relationFollowerCacheKey(userID, version, cursor, limit), value)
 }
 
-func (r RelationCache) SetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return r.setRelationIDListCache(ctx, relationFriendCacheKey(userID, version, offset, limit), value)
+func (r RelationCache) SetRelationFriendCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return r.setRelationIDListCache(ctx, relationFriendCacheKey(userID, version, cursor, limit), value)
 }
 
 func (r RelationCache) BumpFollowingCacheVersion(ctx context.Context, userID uint) error {
@@ -185,36 +187,36 @@ func GetRelationFollowingCacheVersion(ctx context.Context, userID uint) (int64, 
 	return Relations.GetRelationFollowingCacheVersion(ctx, userID)
 }
 
-func GetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return Relations.GetRelationFollowingCache(ctx, userID, version, offset, limit)
+func GetRelationFollowingCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return Relations.GetRelationFollowingCache(ctx, userID, version, cursor, limit)
 }
 
 func GetRelationFollowerCacheVersion(ctx context.Context, userID uint) (int64, error) {
 	return Relations.GetRelationFollowerCacheVersion(ctx, userID)
 }
 
-func GetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return Relations.GetRelationFollowerCache(ctx, userID, version, offset, limit)
+func GetRelationFollowerCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return Relations.GetRelationFollowerCache(ctx, userID, version, cursor, limit)
 }
 
 func GetRelationFriendCacheVersion(ctx context.Context, userID uint) (int64, error) {
 	return Relations.GetRelationFriendCacheVersion(ctx, userID)
 }
 
-func GetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int) (*RelationIDListCache, bool, error) {
-	return Relations.GetRelationFriendCache(ctx, userID, version, offset, limit)
+func GetRelationFriendCache(ctx context.Context, userID uint, version int64, cursor uint, limit int) (*RelationIDListCache, bool, error) {
+	return Relations.GetRelationFriendCache(ctx, userID, version, cursor, limit)
 }
 
-func SetRelationFollowingCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return Relations.SetRelationFollowingCache(ctx, userID, version, offset, limit, value)
+func SetRelationFollowingCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return Relations.SetRelationFollowingCache(ctx, userID, version, cursor, limit, value)
 }
 
-func SetRelationFollowerCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return Relations.SetRelationFollowerCache(ctx, userID, version, offset, limit, value)
+func SetRelationFollowerCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return Relations.SetRelationFollowerCache(ctx, userID, version, cursor, limit, value)
 }
 
-func SetRelationFriendCache(ctx context.Context, userID uint, version int64, offset, limit int, value any) error {
-	return Relations.SetRelationFriendCache(ctx, userID, version, offset, limit, value)
+func SetRelationFriendCache(ctx context.Context, userID uint, version int64, cursor uint, limit int, value any) error {
+	return Relations.SetRelationFriendCache(ctx, userID, version, cursor, limit, value)
 }
 
 func BumpFollowingCacheVersion(ctx context.Context, userID uint) error {

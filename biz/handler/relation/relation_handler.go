@@ -94,7 +94,15 @@ func ListFollowings(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.Relation.ListFollowings(ctx, userID, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowingsResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Relation.ListFollowings(ctx, userID, cursor, req.Limit)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFollowingsResponse{
@@ -134,7 +142,15 @@ func ListFollowers(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.Relation.ListFollowers(ctx, userID, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFollowersResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Relation.ListFollowers(ctx, userID, cursor, req.Limit)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFollowersResponse{
@@ -169,7 +185,15 @@ func ListFriends(ctx context.Context, c *app.RequestContext) {
 	userIDValue, _ := c.Get(middleware.ContextUserID)
 	userID := userIDValue.(uint)
 
-	data, err := service.Relation.ListFriends(ctx, userID, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &relation.ListFriendsResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Relation.ListFriends(ctx, userID, cursor, req.Limit)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &relation.ListFriendsResponse{

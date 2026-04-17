@@ -33,12 +33,11 @@ paths:
                   in: query
                   schema:
                     type: string
-                - name: page_num
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_size
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -60,12 +59,11 @@ paths:
                   in: query
                   schema:
                     type: string
-                - name: page_num
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_size
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -83,12 +81,11 @@ paths:
                 - RelationHandler
             operationId: RelationHandler_ListFriends
             parameters:
-                - name: page_num
+                - name: cursor
                   in: query
                   schema:
-                    type: integer
-                    format: int32
-                - name: page_size
+                    type: string
+                - name: limit
                   in: query
                   schema:
                     type: integer
@@ -154,6 +151,10 @@ components:
                         $ref: '#/components/schemas/SocialProfile'
                 total:
                     type: string
+                next_cursor:
+                    type: string
+                has_more:
+                    type: boolean
             description: SocialListWithTotal 用于社交相关的分页结果
         SocialProfile:
             type: object

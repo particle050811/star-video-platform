@@ -100,7 +100,15 @@ func ListPublishedVideos(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.Video.ListPublishedVideos(ctx, userID, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &video.ListPublishedVideosResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Video.ListPublishedVideos(ctx, userID, cursor, req.Limit)
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
 			c.JSON(consts.StatusNotFound, &video.ListPublishedVideosResponse{
@@ -132,7 +140,15 @@ func SearchVideos(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.Video.SearchVideos(ctx, &req)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &video.SearchVideosResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Video.SearchVideos(ctx, &req, cursor)
 	if err != nil {
 		log.Printf("[视频模块][搜索视频] 查询失败 keywords=%s username=%s: %v", req.Keywords, req.Username, err)
 		c.JSON(consts.StatusInternalServerError, &video.SearchVideosResponse{
@@ -206,7 +222,15 @@ func GetHotVideos(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.Video.GetHotVideos(ctx, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &video.GetHotVideosResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.Video.GetHotVideos(ctx, cursor, req.Limit)
 	if err != nil {
 		log.Printf("[视频模块][热门视频] 查询失败: %v", err)
 		c.JSON(consts.StatusInternalServerError, &video.GetHotVideosResponse{

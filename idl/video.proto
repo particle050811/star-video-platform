@@ -26,6 +26,8 @@ message Video {
 // VideoList 同时返回视频和总数
 message VideoList {
   repeated Video items = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
 }
 
 // ---------- 视频模块请求/响应 ----------
@@ -43,8 +45,8 @@ message PublishVideoResponse {
 
 message ListPublishedVideosRequest {
   string user_id = 1 [(.api.query) = "user_id"];
-  int32 page_num = 2 [(.api.query) = "page_num"];
-  int32 page_size = 3 [(.api.query) = "page_size"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
 }
 
 message ListPublishedVideosResponse {
@@ -54,8 +56,8 @@ message ListPublishedVideosResponse {
 
 message SearchVideosRequest {
   string keywords = 1 [(.api.query) = "keywords"];
-  int32 page_size = 2 [(.api.query) = "page_size"];
-  int32 page_num = 3 [(.api.query) = "page_num"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
   int64 from_date = 4 [(.api.query) = "from_date"];
   int64 to_date = 5 [(.api.query) = "to_date"];
   string username = 6 [(.api.query) = "username"];
@@ -100,8 +102,8 @@ message VideoComment {
 
 // GetHotVideosRequest: 获取热门视频排行榜
 message GetHotVideosRequest {
-  int32 page_num = 1 [(.api.query) = "page_num"];
-  int32 page_size = 2 [(.api.query) = "page_size"];
+  string cursor = 1 [(.api.query) = "cursor"];
+  int32 limit = 2 [(.api.query) = "limit"];
 }
 
 message GetHotVideosResponse {

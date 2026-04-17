@@ -18,6 +18,8 @@ message SocialProfile {
 message SocialListWithTotal {
   repeated SocialProfile items = 1;
   int64 total = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
 }
 
 enum RelationActionType {
@@ -37,8 +39,8 @@ message RelationActionResponse {
 
 message ListFollowingsRequest {
   string user_id = 1 [(.api.query) = "user_id"];
-  int32 page_num = 2 [(.api.query) = "page_num"];
-  int32 page_size = 3 [(.api.query) = "page_size"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
 }
 
 message ListFollowingsResponse {
@@ -48,8 +50,8 @@ message ListFollowingsResponse {
 
 message ListFollowersRequest {
   string user_id = 1 [(.api.query) = "user_id"];
-  int32 page_num = 2 [(.api.query) = "page_num"];
-  int32 page_size = 3 [(.api.query) = "page_size"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
 }
 
 message ListFollowersResponse {
@@ -58,8 +60,8 @@ message ListFollowersResponse {
 }
 
 message ListFriendsRequest {
-  int32 page_num = 1 [(.api.query) = "page_num"];
-  int32 page_size = 2 [(.api.query) = "page_size"];
+  string cursor = 1 [(.api.query) = "cursor"];
+  int32 limit = 2 [(.api.query) = "limit"];
 }
 
 message ListFriendsResponse {

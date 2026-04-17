@@ -13,9 +13,9 @@ type fakeRelationRepository struct {
 	getUserByIDFn    func(ctx context.Context, userID uint) (*repository.UserProfile, error)
 	followUserFn     func(ctx context.Context, fromUserID, toUserID uint) error
 	unfollowUserFn   func(ctx context.Context, fromUserID, toUserID uint) (bool, error)
-	listFollowingsFn func(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
-	listFollowersFn  func(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
-	listFriendsFn    func(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
+	listFollowingsFn func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
+	listFollowersFn  func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
+	listFriendsFn    func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
 }
 
 func (f fakeRelationRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
@@ -30,16 +30,16 @@ func (f fakeRelationRepository) UnfollowUser(ctx context.Context, fromUserID, to
 	return f.unfollowUserFn(ctx, fromUserID, toUserID)
 }
 
-func (f fakeRelationRepository) ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return f.listFollowingsFn(ctx, userID, offset, limit)
+func (f fakeRelationRepository) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return f.listFollowingsFn(ctx, userID, cursor, limit)
 }
 
-func (f fakeRelationRepository) ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return f.listFollowersFn(ctx, userID, offset, limit)
+func (f fakeRelationRepository) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return f.listFollowersFn(ctx, userID, cursor, limit)
 }
 
-func (f fakeRelationRepository) ListFriends(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return f.listFriendsFn(ctx, userID, offset, limit)
+func (f fakeRelationRepository) ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return f.listFriendsFn(ctx, userID, cursor, limit)
 }
 
 func TestRelationServiceRelationActionRejectsSelfFollow(t *testing.T) {
@@ -90,34 +90,37 @@ func TestRelationServiceRelationActionMapsUnfollowMiss(t *testing.T) {
 	}
 }
 
-func TestRelationServiceListFollowingsUsesPaginationAndBuildsResponse(t *testing.T) {
+func TestRelationServiceListFollowingsUsesCursorAndBuildsResponse(t *testing.T) {
 	svc := relationService{
 		repo: fakeRelationRepository{
 			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
 				return &repository.UserProfile{ID: userID}, nil
 			},
-			listFollowingsFn: func(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
+			listFollowingsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
 				if userID != 5 {
 					t.Fatalf("expected user id %d, got %d", 5, userID)
 				}
-				if offset != 20 {
-					t.Fatalf("expected offset %d, got %d", 20, offset)
+				if cursor != 12 {
+					t.Fatalf("expected cursor %d, got %d", 12, cursor)
 				}
 				if limit != 20 {
 					t.Fatalf("expected limit %d, got %d", 20, limit)
 				}
-				return []repository.UserProfile{
-					{
+				return &repository.RelationListResult{
+					Users: []repository.UserProfile{{
 						ID:        9,
 						Username:  "alice",
 						AvatarURL: "/static/avatars/a.png",
-					},
-				}, 1, nil
+					}},
+					Total:      1,
+					NextCursor: 9,
+					HasMore:    true,
+				}, nil
 			},
 		},
 	}
 
-	got, err := svc.ListFollowings(context.Background(), 5, 2, 0)
+	got, err := svc.ListFollowings(context.Background(), 5, 12, 0)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -132,5 +135,8 @@ func TestRelationServiceListFollowingsUsesPaginationAndBuildsResponse(t *testing
 	}
 	if got.Items[0].Username != "alice" {
 		t.Fatalf("expected username %q, got %q", "alice", got.Items[0].Username)
+	}
+	if got.NextCursor != "9" || !got.HasMore {
+		t.Fatalf("unexpected cursor response: %+v", got)
 	}
 }

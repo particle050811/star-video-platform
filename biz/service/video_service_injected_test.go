@@ -15,15 +15,15 @@ import (
 )
 
 type fakeVideoRepository struct {
-	createVideoFn         func(ctx context.Context, video *model.Video) error
-	getUserByIDFn         func(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	createVideoFn           func(ctx context.Context, video *model.Video) error
+	getUserByIDFn           func(ctx context.Context, userID uint) (*repository.UserProfile, error)
 	listUserIDsByUsernameFn func(ctx context.Context, username string) ([]uint, error)
-	getVideoByIDFn        func(ctx context.Context, videoID uint) (*model.Video, error)
-	listVideosByUserIDFn  func(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error)
-	searchVideosFn        func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error)
-	listVideoCommentsFn   func(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
-	listUserSnapshotsFn   func(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
-	listHotVideosFn       func(ctx context.Context, offset, limit int) ([]model.Video, error)
+	getVideoByIDFn          func(ctx context.Context, videoID uint) (*model.Video, error)
+	listVideosByUserIDFn    func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.VideoListResult, error)
+	searchVideosFn          func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error)
+	listVideoCommentsFn     func(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
+	listUserSnapshotsFn     func(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
+	listHotVideosFn         func(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error)
 }
 
 func (f fakeVideoRepository) CreateVideo(ctx context.Context, video *model.Video) error {
@@ -42,12 +42,12 @@ func (f fakeVideoRepository) GetVideoByID(ctx context.Context, videoID uint) (*m
 	return f.getVideoByIDFn(ctx, videoID)
 }
 
-func (f fakeVideoRepository) ListVideosByUserID(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
-	return f.listVideosByUserIDFn(ctx, userID, offset, limit)
+func (f fakeVideoRepository) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*repository.VideoListResult, error) {
+	return f.listVideosByUserIDFn(ctx, userID, cursor, limit)
 }
 
-func (f fakeVideoRepository) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
-	return f.searchVideosFn(ctx, keywords, userIDs, fromDate, toDate, sortBy, offset, limit)
+func (f fakeVideoRepository) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error) {
+	return f.searchVideosFn(ctx, keywords, userIDs, fromDate, toDate, sortBy, cursor, limit)
 }
 
 func (f fakeVideoRepository) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error) {
@@ -58,8 +58,8 @@ func (f fakeVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userIDs
 	return f.listUserSnapshotsFn(ctx, userIDs)
 }
 
-func (f fakeVideoRepository) ListHotVideos(ctx context.Context, offset, limit int) ([]model.Video, error) {
-	return f.listHotVideosFn(ctx, offset, limit)
+func (f fakeVideoRepository) ListHotVideos(ctx context.Context, cursor uint, limit int) (*repository.VideoListResult, error) {
+	return f.listHotVideosFn(ctx, cursor, limit)
 }
 
 type fakeUploadProvider struct {
@@ -255,35 +255,40 @@ func TestVideoServicePublishVideoRemovesPreparedFilesOnRepositoryError(t *testin
 	}
 }
 
-func TestVideoServiceListPublishedVideosUsesNormalizedPagination(t *testing.T) {
+func TestVideoServiceListPublishedVideosUsesCursor(t *testing.T) {
 	svc := videoService{
 		repo: fakeVideoRepository{
 			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
 				return &repository.UserProfile{ID: userID}, nil
 			},
-			listVideosByUserIDFn: func(ctx context.Context, userID uint, offset, limit int) ([]model.Video, error) {
+			listVideosByUserIDFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.VideoListResult, error) {
 				if userID != 7 {
 					t.Fatalf("expected user id %d, got %d", 7, userID)
 				}
-				if offset != 20 {
-					t.Fatalf("expected offset %d, got %d", 20, offset)
+				if cursor != 12 {
+					t.Fatalf("expected cursor %d, got %d", 12, cursor)
 				}
 				if limit != 20 {
 					t.Fatalf("expected limit %d, got %d", 20, limit)
 				}
-				return []model.Video{
-					{ID: 1, UserID: 7, Title: "video", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)},
+				return &repository.VideoListResult{
+					Items:      []model.Video{{ID: 1, UserID: 7, Title: "video", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
+					NextCursor: 1,
+					HasMore:    true,
 				}, nil
 			},
 		},
 	}
 
-	got, err := svc.ListPublishedVideos(context.Background(), 7, 2, 0)
+	got, err := svc.ListPublishedVideos(context.Background(), 7, 12, 0)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 	if len(got.Items) != 1 || got.Items[0].Id != "1" {
 		t.Fatalf("unexpected response: %+v", got)
+	}
+	if got.NextCursor != "1" || !got.HasMore {
+		t.Fatalf("unexpected cursor response: %+v", got)
 	}
 }
 
@@ -296,18 +301,18 @@ func TestVideoServiceSearchVideosUsesUsernameFilter(t *testing.T) {
 				}
 				return []uint{3, 4}, nil
 			},
-			searchVideosFn: func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, offset, limit int) ([]model.Video, error) {
+			searchVideosFn: func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error) {
 				if keywords != "golang" {
 					t.Fatalf("expected keywords %q, got %q", "golang", keywords)
 				}
 				if len(userIDs) != 2 || userIDs[0] != 3 || userIDs[1] != 4 {
 					t.Fatalf("unexpected userIDs: %+v", userIDs)
 				}
-				if offset != 0 || limit != 20 {
-					t.Fatalf("unexpected pagination offset=%d limit=%d", offset, limit)
+				if cursor != 8 || limit != 20 {
+					t.Fatalf("unexpected cursor pagination cursor=%d limit=%d", cursor, limit)
 				}
-				return []model.Video{
-					{ID: 9, UserID: 3, Title: "result", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)},
+				return &repository.VideoListResult{
+					Items: []model.Video{{ID: 9, UserID: 3, Title: "result", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
 				}, nil
 			},
 		},
@@ -316,7 +321,7 @@ func TestVideoServiceSearchVideosUsesUsernameFilter(t *testing.T) {
 	got, err := svc.SearchVideos(context.Background(), &v1.SearchVideosRequest{
 		Keywords: "golang",
 		Username: " alice ",
-	})
+	}, 8)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

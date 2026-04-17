@@ -20,9 +20,9 @@ type relationRepository interface {
 	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
 	FollowUser(ctx context.Context, fromUserID, toUserID uint) error
 	UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error)
-	ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
-	ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
-	ListFriends(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error)
+	ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
+	ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
+	ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
 }
 
 type defaultRelationRepository struct{}
@@ -39,16 +39,16 @@ func (defaultRelationRepository) UnfollowUser(ctx context.Context, fromUserID, t
 	return repository.UnfollowUser(ctx, fromUserID, toUserID)
 }
 
-func (defaultRelationRepository) ListFollowings(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return repository.ListFollowings(ctx, userID, offset, limit)
+func (defaultRelationRepository) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return repository.ListFollowings(ctx, userID, cursor, limit)
 }
 
-func (defaultRelationRepository) ListFollowers(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return repository.ListFollowers(ctx, userID, offset, limit)
+func (defaultRelationRepository) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return repository.ListFollowers(ctx, userID, cursor, limit)
 }
 
-func (defaultRelationRepository) ListFriends(ctx context.Context, userID uint, offset, limit int) ([]repository.UserProfile, int64, error) {
-	return repository.ListFriends(ctx, userID, offset, limit)
+func (defaultRelationRepository) ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
+	return repository.ListFriends(ctx, userID, cursor, limit)
 }
 
 type relationService struct {
@@ -96,7 +96,7 @@ func (s relationService) RelationAction(ctx context.Context, fromUserID, toUserI
 	return nil
 }
 
-func (s relationService) ListFollowings(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+func (s relationService) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -104,16 +104,15 @@ func (s relationService) ListFollowings(ctx context.Context, userID uint, pageNu
 		return nil, err
 	}
 
-	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := s.repo.ListFollowings(ctx, userID, offset, limit)
+	result, err := s.repo.ListFollowings(ctx, userID, cursor, pagination.NormalizeLimit(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	return buildSocialList(users, total), nil
+	return buildSocialList(result), nil
 }
 
-func (s relationService) ListFollowers(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+func (s relationService) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -121,16 +120,15 @@ func (s relationService) ListFollowers(ctx context.Context, userID uint, pageNum
 		return nil, err
 	}
 
-	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := s.repo.ListFollowers(ctx, userID, offset, limit)
+	result, err := s.repo.ListFollowers(ctx, userID, cursor, pagination.NormalizeLimit(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	return buildSocialList(users, total), nil
+	return buildSocialList(result), nil
 }
 
-func (s relationService) ListFriends(ctx context.Context, userID uint, pageNum, pageSize int32) (*relation.SocialListWithTotal, error) {
+func (s relationService) ListFriends(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -138,18 +136,17 @@ func (s relationService) ListFriends(ctx context.Context, userID uint, pageNum, 
 		return nil, err
 	}
 
-	offset, limit := pagination.Normalize(pageNum, pageSize)
-	users, total, err := s.repo.ListFriends(ctx, userID, offset, limit)
+	result, err := s.repo.ListFriends(ctx, userID, cursor, pagination.NormalizeLimit(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	return buildSocialList(users, total), nil
+	return buildSocialList(result), nil
 }
 
-func buildSocialList(users []repository.UserProfile, total int64) *relation.SocialListWithTotal {
-	items := make([]*relation.SocialProfile, 0, len(users))
-	for _, user := range users {
+func buildSocialList(result *repository.RelationListResult) *relation.SocialListWithTotal {
+	items := make([]*relation.SocialProfile, 0, len(result.Users))
+	for _, user := range result.Users {
 		items = append(items, &relation.SocialProfile{
 			Id:        strconv.FormatUint(uint64(user.ID), 10),
 			Username:  user.Username,
@@ -157,8 +154,15 @@ func buildSocialList(users []repository.UserProfile, total int64) *relation.Soci
 		})
 	}
 
+	nextCursor := ""
+	if result.HasMore {
+		nextCursor = strconv.FormatUint(uint64(result.NextCursor), 10)
+	}
+
 	return &relation.SocialListWithTotal{
-		Items: items,
-		Total: total,
+		Items:      items,
+		Total:      result.Total,
+		NextCursor: nextCursor,
+		HasMore:    result.HasMore,
 	}
 }

@@ -19,12 +19,20 @@ func TestBuildSocialList(t *testing.T) {
 		},
 	}
 
-	got := buildSocialList(users, 99)
+	got := buildSocialList(&repository.RelationListResult{
+		Users:      users,
+		Total:      99,
+		NextCursor: 2,
+		HasMore:    true,
+	})
 	if got.Total != 99 {
 		t.Fatalf("expected total %d, got %d", 99, got.Total)
 	}
 	if len(got.Items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(got.Items))
+	}
+	if got.NextCursor != "2" || !got.HasMore {
+		t.Fatalf("unexpected cursor response: %+v", got)
 	}
 	if got.Items[0].Id != "1" {
 		t.Fatalf("expected first item id %q, got %q", "1", got.Items[0].Id)
