@@ -70,8 +70,8 @@ message SearchVideosResponse {
 // ListVideoCommentsRequest: 获取某视频下的评论列表
 message ListVideoCommentsRequest {
   string video_id = 1 [(.api.query) = "video_id"];
-  int32 page_num = 2 [(.api.query) = "page_num"];
-  int32 page_size = 3 [(.api.query) = "page_size"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
 }
 
 message ListVideoCommentsResponse {
@@ -83,6 +83,8 @@ message ListVideoCommentsResponse {
 message VideoCommentList {
   repeated VideoComment items = 1;
   int64 total = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
 }
 
 // VideoComment: 视频下的评论信息（包含评论者基础信息）

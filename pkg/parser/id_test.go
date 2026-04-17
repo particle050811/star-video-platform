@@ -105,3 +105,55 @@ func TestVideoID(t *testing.T) {
 		})
 	}
 }
+
+func TestCursor(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    uint
+		wantErr string
+	}{
+		{
+			name:  "empty cursor",
+			input: "",
+			want:  0,
+		},
+		{
+			name:    "invalid cursor",
+			input:   "abc",
+			wantErr: "cursor 格式错误",
+		},
+		{
+			name:  "zero cursor is allowed",
+			input: "0",
+			want:  0,
+		},
+		{
+			name:  "valid cursor",
+			input: "789",
+			want:  789,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Cursor(tt.input)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q, got nil", tt.wantErr)
+				}
+				if err.Error() != tt.wantErr {
+					t.Fatalf("expected error %q, got %q", tt.wantErr, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("expected %d, got %d", tt.want, got)
+			}
+		})
+	}
+}

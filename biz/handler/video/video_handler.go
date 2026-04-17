@@ -166,7 +166,15 @@ func ListVideoComments(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	data, err := service.ListVideoComments(ctx, videoID, req.PageNum, req.PageSize)
+	cursor, err := parser.Cursor(req.Cursor)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &video.ListVideoCommentsResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	data, err := service.ListVideoComments(ctx, videoID, cursor, req.Limit)
 	if err != nil {
 		if errors.Is(err, service.ErrVideoNotFound) {
 			c.JSON(consts.StatusNotFound, &video.ListVideoCommentsResponse{

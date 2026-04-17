@@ -117,7 +117,7 @@ func SearchVideos(ctx context.Context, req *v1.SearchVideosRequest) (*v1.VideoLi
 	return buildVideoList(videos), nil
 }
 
-func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int32) (*v1.VideoCommentList, error) {
+func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int32) (*v1.VideoCommentList, error) {
 	if _, err := repository.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrVideoNotFound
@@ -125,14 +125,20 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 		return nil, err
 	}
 
-	offset, limit := pagination.Normalize(pageNum, pageSize)
-	comments, total, err := repository.ListVideoComments(ctx, videoID, offset, limit)
+	if limit <= 0 {
+		limit = pagination.DefaultPageSize
+	}
+	if limit > pagination.MaxPageSize {
+		limit = pagination.MaxPageSize
+	}
+
+	result, err := repository.ListVideoComments(ctx, videoID, cursor, int(limit))
 	if err != nil {
 		return nil, err
 	}
 
-	commentUserIDs := make([]uint, 0, len(comments))
-	for _, item := range comments {
+	commentUserIDs := make([]uint, 0, len(result.Items))
+	for _, item := range result.Items {
 		commentUserIDs = append(commentUserIDs, item.UserID)
 	}
 
@@ -146,8 +152,8 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 		userMap[user.ID] = user
 	}
 
-	items := make([]*v1.VideoComment, 0, len(comments))
-	for _, item := range comments {
+	items := make([]*v1.VideoComment, 0, len(result.Items))
+	for _, item := range result.Items {
 		user := userMap[item.UserID]
 		items = append(items, &v1.VideoComment{
 			Id:        strconv.FormatUint(uint64(item.ID), 10),
@@ -160,9 +166,16 @@ func ListVideoComments(ctx context.Context, videoID uint, pageNum, pageSize int3
 		})
 	}
 
+	nextCursor := ""
+	if result.HasMore {
+		nextCursor = strconv.FormatUint(uint64(result.NextCursor), 10)
+	}
+
 	return &v1.VideoCommentList{
-		Items: items,
-		Total: total,
+		Items:      items,
+		Total:      result.Total,
+		NextCursor: nextCursor,
+		HasMore:    result.HasMore,
 	}, nil
 }
 

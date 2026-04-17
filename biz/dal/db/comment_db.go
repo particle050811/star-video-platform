@@ -14,30 +14,39 @@ type VideoComment struct {
 	CreatedAt time.Time
 }
 
-func ListVideoComments(ctx context.Context, videoID uint, offset, limit int) ([]VideoComment, int64, error) {
+func ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) ([]VideoComment, int64, bool, error) {
 	var total int64
 	if err := DB.WithContext(ctx).Model(&model.Comment{}).
 		Where("video_id = ?", videoID).
 		Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, false, err
 	}
 
 	comments := make([]VideoComment, 0)
 	if total == 0 {
-		return comments, 0, nil
+		return comments, 0, false, nil
 	}
 
-	err := DB.WithContext(ctx).
+	query := DB.WithContext(ctx).
 		Model(&model.Comment{}).
 		Select("id, user_id, content, like_count, created_at").
-		Where("video_id = ?", videoID).
-		Order("id DESC").
-		Offset(offset).
-		Limit(limit).
-		Scan(&comments).Error
-	if err != nil {
-		return nil, 0, err
+		Where("video_id = ?", videoID)
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
 	}
 
-	return comments, total, nil
+	err := query.
+		Order("id DESC").
+		Limit(limit + 1).
+		Scan(&comments).Error
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	hasMore := len(comments) > limit
+	if hasMore {
+		comments = comments[:limit]
+	}
+
+	return comments, total, hasMore, nil
 }

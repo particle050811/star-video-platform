@@ -30,3 +30,16 @@ func VideoID(rawVideoID string) (uint, error) {
 
 	return uint(parsedVideoID), nil
 }
+
+func Cursor(rawCursor string) (uint, error) {
+	if rawCursor == "" {
+		return 0, nil
+	}
+
+	parsedCursor, err := strconv.ParseUint(rawCursor, 10, 64)
+	if err != nil {
+		return 0, errors.New("cursor 格式错误")
+	}
+
+	return uint(parsedCursor), nil
+}
