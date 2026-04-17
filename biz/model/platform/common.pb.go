@@ -26,8 +26,8 @@ type BaseResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Code int32  `protobuf:"varint,1,opt,name=code,proto3" form:"code" json:"code,omitempty" query:"code"`
-	Msg  string `protobuf:"bytes,2,opt,name=msg,proto3" form:"msg" json:"msg,omitempty" query:"msg"`
+	Code int32  `protobuf:"varint,1,opt,name=code,proto3" form:"code" json:"code" query:"code"`
+	Msg  string `protobuf:"bytes,2,opt,name=msg,proto3" form:"msg" json:"msg" query:"msg"`
 }
 
 func (x *BaseResponse) Reset() {
@@ -82,8 +82,8 @@ type PageParams struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PageNum  int32 `protobuf:"varint,1,opt,name=page_num,json=pageNum,proto3" form:"page_num" json:"page_num,omitempty" query:"page_num"`
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" form:"page_size" json:"page_size,omitempty" query:"page_size"`
+	PageNum  int32 `protobuf:"varint,1,opt,name=page_num,json=pageNum,proto3" form:"page_num" json:"page_num" query:"page_num"`
+	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" form:"page_size" json:"page_size" query:"page_size"`
 }
 
 func (x *PageParams) Reset() {

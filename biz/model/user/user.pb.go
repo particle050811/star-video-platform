@@ -28,9 +28,9 @@ type User struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id        string `protobuf:"bytes,1,opt,name=id,proto3" form:"id" json:"id,omitempty" query:"id"`
-	Username  string `protobuf:"bytes,2,opt,name=username,proto3" form:"username" json:"username,omitempty" query:"username"`
-	AvatarUrl string `protobuf:"bytes,3,opt,name=avatar_url,json=avatarUrl,proto3" form:"avatar_url" json:"avatar_url,omitempty" query:"avatar_url"` // 用户头像 URL，用于前端展示
+	Id        string `protobuf:"bytes,1,opt,name=id,proto3" form:"id" json:"id" query:"id"`
+	Username  string `protobuf:"bytes,2,opt,name=username,proto3" form:"username" json:"username" query:"username"`
+	AvatarUrl string `protobuf:"bytes,3,opt,name=avatar_url,json=avatarUrl,proto3" form:"avatar_url" json:"avatar_url" query:"avatar_url"` // 用户头像 URL，用于前端展示
 }
 
 func (x *User) Reset() {
@@ -91,8 +91,8 @@ type RegisterRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" form:"username" json:"username,omitempty" vd:"len($) > 0 && len($) < 50"`
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" form:"password" json:"password,omitempty" vd:"len($) >= 6"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" form:"username" json:"username" vd:"len($) > 0 && len($) < 50"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" form:"password" json:"password" vd:"len($) >= 6"`
 }
 
 func (x *RegisterRequest) Reset() {
@@ -146,7 +146,7 @@ type RegisterResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base" query:"base"`
 }
 
 func (x *RegisterResponse) Reset() {
@@ -193,8 +193,8 @@ type LoginRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" form:"username" json:"username,omitempty"`
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" form:"password" json:"password,omitempty"`
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" form:"username" json:"username"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" form:"password" json:"password"`
 }
 
 func (x *LoginRequest) Reset() {
@@ -248,10 +248,10 @@ type LoginResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	Data         *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
-	AccessToken  string                 `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 访问令牌，有效期 15 分钟
-	RefreshToken string                 `protobuf:"bytes,4,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 刷新令牌，有效期 7 天
+	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base" query:"base"`
+	Data         *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data" query:"data"`
+	AccessToken  string                 `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token" query:"access_token"`      // 访问令牌，有效期 15 分钟
+	RefreshToken string                 `protobuf:"bytes,4,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token" query:"refresh_token"` // 刷新令牌，有效期 7 天
 }
 
 func (x *LoginResponse) Reset() {
@@ -319,7 +319,7 @@ type GetUserInfoRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty" query:"user_id"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id" query:"user_id"`
 }
 
 func (x *GetUserInfoRequest) Reset() {
@@ -366,8 +366,8 @@ type GetUserInfoResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	Data *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data,omitempty" query:"data"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base" query:"base"`
+	Data *User                  `protobuf:"bytes,2,opt,name=data,proto3" form:"data" json:"data" query:"data"`
 }
 
 func (x *GetUserInfoResponse) Reset() {
@@ -461,7 +461,7 @@ type UploadAvatarResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
+	Base *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base" query:"base"`
 }
 
 func (x *UploadAvatarResponse) Reset() {
@@ -509,7 +509,7 @@ type RefreshTokenRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RefreshToken string `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty"`
+	RefreshToken string `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token"`
 }
 
 func (x *RefreshTokenRequest) Reset() {
@@ -556,9 +556,9 @@ type RefreshTokenResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base,omitempty" query:"base"`
-	AccessToken  string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token,omitempty" query:"access_token"`      // 新的访问令牌
-	RefreshToken string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token,omitempty" query:"refresh_token"` // 新的刷新令牌（可选：滑动刷新）
+	Base         *platform.BaseResponse `protobuf:"bytes,1,opt,name=base,proto3" form:"base" json:"base" query:"base"`
+	AccessToken  string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" form:"access_token" json:"access_token" query:"access_token"`      // 新的访问令牌
+	RefreshToken string                 `protobuf:"bytes,3,opt,name=refresh_token,json=refreshToken,proto3" form:"refresh_token" json:"refresh_token" query:"refresh_token"` // 新的刷新令牌（可选：滑动刷新）
 }
 
 func (x *RefreshTokenResponse) Reset() {
