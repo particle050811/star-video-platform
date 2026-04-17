@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package api.video.v1;
+
+option go_package = "/interaction";
+
+import "api.proto";
+import "common.proto";
+import "video.proto";
+
+// UserComment 表示用户评论记录
+message UserComment {
+  string id = 1;
+  string user_id = 2;
+  string video_id = 3;
+  string content = 4;
+  int64 like_count = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// UserCommentList 用于返回用户评论分页结果
+message UserCommentList {
+  repeated UserComment items = 1;
+  int64 total = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+}
+
+// LikeActionType 表示点赞操作类型
+enum LikeActionType {
+  LIKE_ACTION_TYPE_UNSPECIFIED = 0;
+  LIKE_ACTION_TYPE_ADD = 1;
+  LIKE_ACTION_TYPE_CANCEL = 2;
+}
+
+// ---------- 互动模块请求/响应 ----------
+
+message VideoLikeActionRequest {
+  string video_id = 1 [(.api.body) = "video_id"];
+  LikeActionType action_type = 2 [(.api.body) = "action_type", (.api.vd) = "$==1 || $==2"];
+}
+
+message VideoLikeActionResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+message ListLikedVideosRequest {
+  string user_id = 1 [(.api.query) = "user_id"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
+}
+
+message ListLikedVideosResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  VideoList data = 2 [(.api.body) = "data"];
+}
+
+message PublishCommentRequest {
+  string video_id = 1 [(.api.body) = "video_id"];
+  string content = 2 [(.api.body) = "content", (.api.vd) = "len($) > 0"];
+}
+
+message PublishCommentResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+// ListUserCommentsRequest 获取某用户发表的评论列表
+message ListUserCommentsRequest {
+  string user_id = 1 [(.api.query) = "user_id"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
+}
+
+message ListUserCommentsResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  UserCommentList data = 2 [(.api.body) = "data"];
+}
+
+message DeleteCommentRequest {
+  string comment_id = 1 [(.api.body) = "comment_id"];
+}
+
+message DeleteCommentResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+// ---------- Handler 定义 ----------
+
+service InteractionHandler {
+  rpc VideoLikeAction(VideoLikeActionRequest) returns (VideoLikeActionResponse) {
+    option (.api.post) = "/api/v1/interaction/like";
+  }
+  rpc ListLikedVideos(ListLikedVideosRequest) returns (ListLikedVideosResponse) {
+    option (.api.get) = "/api/v1/interaction/like/list";
+  }
+  rpc PublishComment(PublishCommentRequest) returns (PublishCommentResponse) {
+    option (.api.post) = "/api/v1/interaction/comment";
+  }
+  rpc ListUserComments(ListUserCommentsRequest) returns (ListUserCommentsResponse) {
+    option (.api.get) = "/api/v1/interaction/comment/list";
+  }
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {
+    option (.api.post) = "/api/v1/interaction/comment/delete";
+  }
+}
