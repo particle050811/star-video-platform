@@ -80,6 +80,8 @@ type fakeChatCacheStore struct {
 	getChatMessageCacheFn         func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error)
 	setChatMessageCacheFn         func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error
 	bumpChatMessageCacheVersionFn func(ctx context.Context, roomID uint) error
+	publishChatMessageEventFn     func(ctx context.Context, value any) error
+	subscribeChatMessageEventsFn  func(ctx context.Context) (<-chan string, func() error, error)
 }
 
 func (f fakeChatCacheStore) GetChatMessageCacheVersion(ctx context.Context, roomID uint) (int64, error) {
@@ -96,6 +98,14 @@ func (f fakeChatCacheStore) SetChatMessageCache(ctx context.Context, roomID uint
 
 func (f fakeChatCacheStore) BumpChatMessageCacheVersion(ctx context.Context, roomID uint) error {
 	return f.bumpChatMessageCacheVersionFn(ctx, roomID)
+}
+
+func (f fakeChatCacheStore) PublishChatMessageEvent(ctx context.Context, value any) error {
+	return f.publishChatMessageEventFn(ctx, value)
+}
+
+func (f fakeChatCacheStore) SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	return f.subscribeChatMessageEventsFn(ctx)
 }
 
 func TestChatStoreListRoomsBuildsRoomItems(t *testing.T) {
@@ -375,6 +385,34 @@ func TestChatStoreCreateMessageBumpsMessageCacheVersion(t *testing.T) {
 	}
 	if bumpedRoomID != 6 {
 		t.Fatalf("expected bumped roomID 6, got %d", bumpedRoomID)
+	}
+}
+
+func TestPublishChatMessageEventUsesRedisCache(t *testing.T) {
+	var published any
+	original := chats
+	defer func() {
+		chats = original
+	}()
+
+	chats = chatStore{
+		cache: fakeChatCacheStore{
+			publishChatMessageEventFn: func(ctx context.Context, value any) error {
+				published = value
+				return nil
+			},
+		},
+	}
+
+	event := ChatMessageEvent{
+		MemberUserIDs: []uint{1, 2},
+		Message:       map[string]string{"id": "101"},
+	}
+	if err := PublishChatMessageEvent(context.Background(), event); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if published == nil {
+		t.Fatal("expected event to be published")
 	}
 }
 

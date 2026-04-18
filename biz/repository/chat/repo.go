@@ -2,6 +2,10 @@ package chat
 
 import (
 	"context"
+	"os"
+	"strconv"
+	"time"
+
 	dbdal "video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	rdbdal "video-platform/biz/dal/rdb"
@@ -31,6 +35,8 @@ type chatCacheStore interface {
 	GetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error)
 	SetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error
 	BumpChatMessageCacheVersion(ctx context.Context, roomID uint) error
+	PublishChatMessageEvent(ctx context.Context, value any) error
+	SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error)
 }
 
 type chatStore struct {
@@ -64,6 +70,12 @@ type ChatMessageItem struct {
 	Sender  userrepo.UserProfile
 }
 
+type ChatMessageEvent struct {
+	Origin        string `json:"origin"`
+	MemberUserIDs []uint `json:"member_user_ids"`
+	Message       any    `json:"message"`
+}
+
 type ChatRoomMemberListResult struct {
 	Members    []ChatRoomMemberItem
 	NextCursor uint
@@ -86,6 +98,8 @@ var chats = chatStore{
 	snapshots: defaultChatSnapshotStore{},
 	cache:     rdbdal.Chats,
 }
+
+var chatEventOrigin = strconv.FormatInt(time.Now().UnixNano(), 36) + ":" + strconv.Itoa(os.Getpid())
 
 func CreateChatRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error {
 	return chats.CreateRoom(ctx, room, members)
@@ -125,6 +139,27 @@ func UpdateChatLastReadMessageID(ctx context.Context, roomID, userID, messageID 
 
 func CreateChatMessage(ctx context.Context, message *model.ChatMessage) error {
 	return chats.CreateMessage(ctx, message)
+}
+
+func PublishChatMessageEvent(ctx context.Context, event ChatMessageEvent) error {
+	if chats.cache == nil {
+		return nil
+	}
+	if event.Origin == "" {
+		event.Origin = chatEventOrigin
+	}
+	return chats.cache.PublishChatMessageEvent(ctx, event)
+}
+
+func ChatMessageEventOrigin() string {
+	return chatEventOrigin
+}
+
+func SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	if chats.cache == nil {
+		return nil, nil, rdbdal.ErrRedisUnavailable
+	}
+	return chats.cache.SubscribeChatMessageEvents(ctx)
 }
 
 func (s chatStore) CreateRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error {

@@ -21,8 +21,26 @@ func JWTAuth() app.HandlerFunc {
 	return jwtAuthHandler
 }
 
+// JWTAuthWithQueryToken 支持 WebSocket 等无法设置 Authorization 头的客户端通过 query 传 access_token。
+func JWTAuthWithQueryToken() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		jwtAuth(ctx, c, bearerToken(c), strings.TrimSpace(c.Query("access_token")))
+	}
+}
+
 func jwtAuthHandler(ctx context.Context, c *app.RequestContext) {
-	tokenString := bearerToken(c)
+	jwtAuth(ctx, c, bearerToken(c))
+}
+
+func jwtAuth(ctx context.Context, c *app.RequestContext, tokens ...string) {
+	tokenString := ""
+	for _, token := range tokens {
+		token = strings.TrimSpace(token)
+		if token != "" {
+			tokenString = token
+			break
+		}
+	}
 	if tokenString == "" {
 		c.AbortWithStatusJSON(consts.StatusUnauthorized, response.Unauthorized("缺少访问令牌"))
 		return

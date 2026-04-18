@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"testing"
+
+	"video-platform/pkg/auth"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
@@ -56,5 +59,56 @@ func TestBearerToken(t *testing.T) {
 				t.Fatalf("expected token %q, got %q", tt.want, got)
 			}
 		})
+	}
+}
+
+func TestJWTAuthWithQueryToken(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	auth.InitJWT()
+
+	accessToken, _, err := auth.GenerateTokenPair(12)
+	if err != nil {
+		t.Fatalf("failed to generate token: %v", err)
+	}
+
+	ctx := app.NewContext(0)
+	ctx.Request.SetRequestURI("/api/v1/chat/ws?access_token=" + accessToken)
+
+	JWTAuthWithQueryToken()(context.Background(), ctx)
+
+	userIDValue, ok := ctx.Get(ContextUserID)
+	if !ok {
+		t.Fatal("expected user id in context")
+	}
+	if userIDValue.(uint) != 12 {
+		t.Fatalf("expected user id 12, got %v", userIDValue)
+	}
+}
+
+func TestJWTAuthWithQueryTokenPrefersAuthorizationHeader(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	auth.InitJWT()
+
+	headerToken, _, err := auth.GenerateTokenPair(21)
+	if err != nil {
+		t.Fatalf("failed to generate header token: %v", err)
+	}
+	queryToken, _, err := auth.GenerateTokenPair(22)
+	if err != nil {
+		t.Fatalf("failed to generate query token: %v", err)
+	}
+
+	ctx := app.NewContext(0)
+	ctx.Request.SetRequestURI("/api/v1/chat/ws?access_token=" + queryToken)
+	ctx.Request.Header.Set(consts.HeaderAuthorization, "Bearer "+headerToken)
+
+	JWTAuthWithQueryToken()(context.Background(), ctx)
+
+	userIDValue, ok := ctx.Get(ContextUserID)
+	if !ok {
+		t.Fatal("expected user id in context")
+	}
+	if userIDValue.(uint) != 21 {
+		t.Fatalf("expected header user id 21, got %v", userIDValue)
 	}
 }

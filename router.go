@@ -3,12 +3,15 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	handler "video-platform/biz/handler"
+	chat "video-platform/biz/handler/chat"
+	"video-platform/pkg/middleware"
 	"video-platform/pkg/upload"
 )
 
@@ -27,7 +30,8 @@ func customizedRegister(r *server.Hertz) {
 		GenerateIndexPages: true,
 	})
 
-	// your code ...
+	chat.StartChatWebSocketSubscriber(context.Background())
+	r.GET("/api/v1/chat/ws", middleware.JWTAuthWithQueryToken(), chat.ChatWebSocket)
 }
 
 func openAPIDocsRoot() string {

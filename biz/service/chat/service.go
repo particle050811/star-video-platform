@@ -40,6 +40,8 @@ type chatRepository interface {
 	DeleteChatRoomMember(ctx context.Context, roomID, userID uint) (bool, error)
 	UpdateChatLastReadMessageID(ctx context.Context, roomID, userID, messageID uint) error
 	CreateChatMessage(ctx context.Context, message *model.ChatMessage) error
+	PublishChatMessageEvent(ctx context.Context, event chatrepo.ChatMessageEvent) error
+	SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error)
 }
 
 type defaultChatRepository struct{}
@@ -86,6 +88,53 @@ func (defaultChatRepository) UpdateChatLastReadMessageID(ctx context.Context, ro
 
 func (defaultChatRepository) CreateChatMessage(ctx context.Context, message *model.ChatMessage) error {
 	return chatrepo.CreateChatMessage(ctx, message)
+}
+
+func (defaultChatRepository) PublishChatMessageEvent(ctx context.Context, event chatrepo.ChatMessageEvent) error {
+	return chatrepo.PublishChatMessageEvent(ctx, event)
+}
+
+func (defaultChatRepository) SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	return chatrepo.SubscribeChatMessageEvents(ctx)
+}
+
+func (s chatService) ListMemberUserIDs(ctx context.Context, userID, roomID uint) ([]uint, error) {
+	if err := s.ensureRoomMember(ctx, roomID, userID); err != nil {
+		return nil, err
+	}
+
+	const memberBatchSize = 100
+	cursor := uint(0)
+	memberIDs := make([]uint, 0)
+	for {
+		result, err := s.repo.ListChatRoomMembers(ctx, roomID, cursor, memberBatchSize)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range result.Members {
+			memberIDs = append(memberIDs, item.Member.UserID)
+		}
+		if !result.HasMore {
+			break
+		}
+		cursor = result.NextCursor
+	}
+	return memberIDs, nil
+}
+
+func (s chatService) PublishMessageEvent(ctx context.Context, memberUserIDs []uint, message *chat.ChatMessage) error {
+	return s.repo.PublishChatMessageEvent(ctx, chatrepo.ChatMessageEvent{
+		MemberUserIDs: memberUserIDs,
+		Message:       message,
+	})
+}
+
+func (s chatService) SubscribeMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	return s.repo.SubscribeChatMessageEvents(ctx)
+}
+
+func (s chatService) MessageEventOrigin() string {
+	return chatrepo.ChatMessageEventOrigin()
 }
 
 type chatService struct {

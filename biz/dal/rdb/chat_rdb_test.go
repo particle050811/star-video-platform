@@ -122,6 +122,32 @@ func TestChatCacheFirstBumpMovesVersionToOne(t *testing.T) {
 	}
 }
 
+func TestChatCachePublishChatMessageEvent(t *testing.T) {
+	client, mock := redismock.NewClientMock()
+	cache := NewChatCache(client)
+
+	event := map[string]any{
+		"member_user_ids": []uint{1, 2},
+		"message": map[string]string{
+			"id": "101",
+		},
+	}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("failed to marshal event: %v", err)
+	}
+
+	mock.ExpectPublish(chatMessageEventChannel, raw).SetVal(1)
+
+	if err := cache.PublishChatMessageEvent(context.Background(), event); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet redis expectations: %v", err)
+	}
+}
+
 func TestChatCacheMissingMessageCacheReturnsMiss(t *testing.T) {
 	client, mock := redismock.NewClientMock()
 	cache := NewChatCache(client)

@@ -81,6 +81,14 @@ func (f *fakeChatRepo) CreateChatMessage(_ context.Context, _ *model.ChatMessage
 	return nil
 }
 
+func (f *fakeChatRepo) PublishChatMessageEvent(_ context.Context, _ chatrepo.ChatMessageEvent) error {
+	return nil
+}
+
+func (f *fakeChatRepo) SubscribeChatMessageEvents(_ context.Context) (<-chan string, func() error, error) {
+	return nil, nil, nil
+}
+
 func TestChatServiceCreatePrivateRoomUsesMemberRole(t *testing.T) {
 	repo := &fakeChatRepo{
 		users: map[uint]*userrepo.UserProfile{

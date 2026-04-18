@@ -12,6 +12,9 @@ import (
 )
 
 const chatMessageCacheTTL = 1 * time.Minute
+const chatMessageEventChannel = "chat:messages:events"
+
+var ErrRedisUnavailable = errors.New("redis client is unavailable")
 
 type ChatCache struct {
 	client *redis.Client
@@ -107,6 +110,47 @@ func (c ChatCache) BumpChatMessageCacheVersion(ctx context.Context, roomID uint)
 	return client.Incr(ctx, chatMessageCacheVersionKey(roomID)).Err()
 }
 
+func (c ChatCache) PublishChatMessageEvent(ctx context.Context, value any) error {
+	client := c.redisClient()
+	if client == nil {
+		return ErrRedisUnavailable
+	}
+
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	return client.Publish(ctx, chatMessageEventChannel, payload).Err()
+}
+
+func (c ChatCache) SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	client := c.redisClient()
+	if client == nil {
+		return nil, nil, ErrRedisUnavailable
+	}
+
+	pubsub := client.Subscribe(ctx, chatMessageEventChannel)
+	if _, err := pubsub.Receive(ctx); err != nil {
+		_ = pubsub.Close()
+		return nil, nil, err
+	}
+
+	messages := make(chan string)
+	go func() {
+		defer close(messages)
+		for message := range pubsub.Channel() {
+			select {
+			case messages <- message.Payload:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return messages, pubsub.Close, nil
+}
+
 func GetChatMessageCacheVersion(ctx context.Context, roomID uint) (int64, error) {
 	return Chats.GetChatMessageCacheVersion(ctx, roomID)
 }
@@ -121,4 +165,12 @@ func SetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor
 
 func BumpChatMessageCacheVersion(ctx context.Context, roomID uint) error {
 	return Chats.BumpChatMessageCacheVersion(ctx, roomID)
+}
+
+func PublishChatMessageEvent(ctx context.Context, value any) error {
+	return Chats.PublishChatMessageEvent(ctx, value)
+}
+
+func SubscribeChatMessageEvents(ctx context.Context) (<-chan string, func() error, error) {
+	return Chats.SubscribeChatMessageEvents(ctx)
 }
