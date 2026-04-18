@@ -1,12 +1,13 @@
-package service
+package relation
 
 import (
 	"testing"
-	"video-platform/biz/repository"
+	relationrepo "video-platform/biz/repository/relation"
+	userrepo "video-platform/biz/repository/user"
 )
 
 func TestBuildSocialList(t *testing.T) {
-	users := []repository.UserProfile{
+	users := []userrepo.UserProfile{
 		{
 			ID:        1,
 			Username:  "alice",
@@ -19,7 +20,7 @@ func TestBuildSocialList(t *testing.T) {
 		},
 	}
 
-	got := buildSocialList(&repository.RelationListResult{
+	got := buildSocialList(&relationrepo.RelationListResult{
 		Users:      users,
 		Total:      99,
 		NextCursor: 2,
@@ -55,7 +56,7 @@ func TestBuildSocialList(t *testing.T) {
 }
 
 func TestBuildSocialListReturnsEmptyItems(t *testing.T) {
-	got := buildSocialList(&repository.RelationListResult{})
+	got := buildSocialList(&relationrepo.RelationListResult{})
 	if got == nil {
 		t.Fatal("expected non-nil data")
 	}

@@ -1,4 +1,4 @@
-package service
+package interaction
 
 import "errors"
 
@@ -8,4 +8,5 @@ var (
 	ErrCommentEmpty    = errors.New("评论内容不能为空")
 	ErrAlreadyLiked    = errors.New("已经点赞该视频")
 	ErrLikeNotFound    = errors.New("点赞记录不存在")
+	ErrNoPermission    = errors.New("无权限操作")
 )

@@ -1,4 +1,4 @@
-package service
+package interaction
 
 import (
 	"context"
@@ -9,7 +9,11 @@ import (
 	"video-platform/biz/dal/model"
 	interaction "video-platform/biz/model/interaction"
 	videomodel "video-platform/biz/model/video"
-	"video-platform/biz/repository"
+	interactionrepo "video-platform/biz/repository/interaction"
+	userrepo "video-platform/biz/repository/user"
+	videorepo "video-platform/biz/repository/video"
+	usersvc "video-platform/biz/service/user"
+	videosvc "video-platform/biz/service/video"
 	"video-platform/pkg/pagination"
 
 	"gorm.io/gorm"
@@ -22,53 +26,53 @@ const (
 )
 
 type interactionRepository interface {
-	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error)
 	LikeVideo(ctx context.Context, userID, videoID uint) error
 	CancelLikeVideo(ctx context.Context, userID, videoID uint) (bool, error)
-	ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*repository.LikedVideoListResult, error)
+	ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.LikedVideoListResult, error)
 	CreateComment(ctx context.Context, comment *model.Comment) error
-	ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error)
+	ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error)
 	GetCommentByID(ctx context.Context, commentID uint) (*model.Comment, error)
 	DeleteComment(ctx context.Context, commentID uint) error
 }
 
 type defaultInteractionRepository struct{}
 
-func (defaultInteractionRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-	return repository.GetUserByID(ctx, userID)
+func (defaultInteractionRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+	return userrepo.GetUserByID(ctx, userID)
 }
 
 func (defaultInteractionRepository) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
-	return repository.GetVideoByID(ctx, videoID)
+	return videorepo.GetVideoByID(ctx, videoID)
 }
 
 func (defaultInteractionRepository) LikeVideo(ctx context.Context, userID, videoID uint) error {
-	return repository.LikeVideo(ctx, userID, videoID)
+	return interactionrepo.LikeVideo(ctx, userID, videoID)
 }
 
 func (defaultInteractionRepository) CancelLikeVideo(ctx context.Context, userID, videoID uint) (bool, error) {
-	return repository.CancelLikeVideo(ctx, userID, videoID)
+	return interactionrepo.CancelLikeVideo(ctx, userID, videoID)
 }
 
-func (defaultInteractionRepository) ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*repository.LikedVideoListResult, error) {
-	return repository.ListLikedVideos(ctx, userID, cursor, limit)
+func (defaultInteractionRepository) ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.LikedVideoListResult, error) {
+	return interactionrepo.ListLikedVideos(ctx, userID, cursor, limit)
 }
 
 func (defaultInteractionRepository) CreateComment(ctx context.Context, comment *model.Comment) error {
-	return repository.CreateComment(ctx, comment)
+	return interactionrepo.CreateComment(ctx, comment)
 }
 
-func (defaultInteractionRepository) ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error) {
-	return repository.ListUserComments(ctx, userID, cursor, limit)
+func (defaultInteractionRepository) ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error) {
+	return interactionrepo.ListUserComments(ctx, userID, cursor, limit)
 }
 
 func (defaultInteractionRepository) GetCommentByID(ctx context.Context, commentID uint) (*model.Comment, error) {
-	return repository.GetCommentByID(ctx, commentID)
+	return interactionrepo.GetCommentByID(ctx, commentID)
 }
 
 func (defaultInteractionRepository) DeleteComment(ctx context.Context, commentID uint) error {
-	return repository.DeleteComment(ctx, commentID)
+	return interactionrepo.DeleteComment(ctx, commentID)
 }
 
 type interactionService struct {
@@ -82,7 +86,7 @@ var Interaction = interactionService{
 func (s interactionService) VideoLikeAction(ctx context.Context, userID, videoID uint, actionType interaction.LikeActionType) error {
 	if _, err := s.repo.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrVideoNotFound
+			return videosvc.ErrVideoNotFound
 		}
 		return err
 	}
@@ -94,7 +98,7 @@ func (s interactionService) VideoLikeAction(ctx context.Context, userID, videoID
 				return ErrAlreadyLiked
 			}
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrVideoNotFound
+				return videosvc.ErrVideoNotFound
 			}
 			return err
 		}
@@ -102,7 +106,7 @@ func (s interactionService) VideoLikeAction(ctx context.Context, userID, videoID
 		deleted, err := s.repo.CancelLikeVideo(ctx, userID, videoID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrVideoNotFound
+				return videosvc.ErrVideoNotFound
 			}
 			return err
 		}
@@ -117,7 +121,7 @@ func (s interactionService) VideoLikeAction(ctx context.Context, userID, videoID
 func (s interactionService) ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int32) (*videomodel.VideoList, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -127,7 +131,7 @@ func (s interactionService) ListLikedVideos(ctx context.Context, userID uint, cu
 		return nil, err
 	}
 
-	return buildVideoList(&repository.VideoListResult{
+	return videosvc.BuildVideoList(&videorepo.VideoListResult{
 		Items:      result.Items,
 		NextCursor: result.NextCursor,
 		HasMore:    result.HasMore,
@@ -145,7 +149,7 @@ func (s interactionService) PublishComment(ctx context.Context, userID, videoID 
 
 	if _, err := s.repo.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrVideoNotFound
+			return videosvc.ErrVideoNotFound
 		}
 		return err
 	}
@@ -156,7 +160,7 @@ func (s interactionService) PublishComment(ctx context.Context, userID, videoID 
 		Content: content,
 	}); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrVideoNotFound
+			return videosvc.ErrVideoNotFound
 		}
 		return err
 	}
@@ -167,7 +171,7 @@ func (s interactionService) PublishComment(ctx context.Context, userID, videoID 
 func (s interactionService) ListUserComments(ctx context.Context, userID uint, cursor uint, limit int32) (*interaction.UserCommentList, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -180,7 +184,7 @@ func (s interactionService) ListUserComments(ctx context.Context, userID uint, c
 	return buildUserCommentList(result), nil
 }
 
-func buildUserCommentList(result *repository.UserCommentListResult) *interaction.UserCommentList {
+func buildUserCommentList(result *interactionrepo.UserCommentListResult) *interaction.UserCommentList {
 	items := make([]*interaction.UserComment, 0)
 	if result == nil {
 		return &interaction.UserCommentList{

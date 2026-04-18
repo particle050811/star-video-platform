@@ -1,4 +1,4 @@
-package service
+package interaction
 
 import (
 	"context"
@@ -7,24 +7,26 @@ import (
 	"time"
 	"video-platform/biz/dal/model"
 	interaction "video-platform/biz/model/interaction"
-	"video-platform/biz/repository"
+	interactionrepo "video-platform/biz/repository/interaction"
+	userrepo "video-platform/biz/repository/user"
+	videosvc "video-platform/biz/service/video"
 
 	"gorm.io/gorm"
 )
 
 type fakeInteractionRepository struct {
-	getUserByIDFn      func(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	getUserByIDFn      func(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	getVideoByIDFn     func(ctx context.Context, videoID uint) (*model.Video, error)
 	likeVideoFn        func(ctx context.Context, userID, videoID uint) error
 	cancelLikeVideoFn  func(ctx context.Context, userID, videoID uint) (bool, error)
-	listLikedVideosFn  func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.LikedVideoListResult, error)
+	listLikedVideosFn  func(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.LikedVideoListResult, error)
 	createCommentFn    func(ctx context.Context, comment *model.Comment) error
-	listUserCommentsFn func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error)
+	listUserCommentsFn func(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error)
 	getCommentByIDFn   func(ctx context.Context, commentID uint) (*model.Comment, error)
 	deleteCommentFn    func(ctx context.Context, commentID uint) error
 }
 
-func (f fakeInteractionRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+func (f fakeInteractionRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
 	return f.getUserByIDFn(ctx, userID)
 }
 
@@ -40,7 +42,7 @@ func (f fakeInteractionRepository) CancelLikeVideo(ctx context.Context, userID, 
 	return f.cancelLikeVideoFn(ctx, userID, videoID)
 }
 
-func (f fakeInteractionRepository) ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*repository.LikedVideoListResult, error) {
+func (f fakeInteractionRepository) ListLikedVideos(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.LikedVideoListResult, error) {
 	return f.listLikedVideosFn(ctx, userID, cursor, limit)
 }
 
@@ -48,7 +50,7 @@ func (f fakeInteractionRepository) CreateComment(ctx context.Context, comment *m
 	return f.createCommentFn(ctx, comment)
 }
 
-func (f fakeInteractionRepository) ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error) {
+func (f fakeInteractionRepository) ListUserComments(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error) {
 	return f.listUserCommentsFn(ctx, userID, cursor, limit)
 }
 
@@ -91,8 +93,8 @@ func TestInteractionServiceVideoLikeActionMapsConcurrentVideoDelete(t *testing.T
 	}
 
 	err := svc.VideoLikeAction(context.Background(), 1, 2, interaction.LikeActionType_LIKE_ACTION_TYPE_ADD)
-	if !errors.Is(err, ErrVideoNotFound) {
-		t.Fatalf("expected error %v, got %v", ErrVideoNotFound, err)
+	if !errors.Is(err, videosvc.ErrVideoNotFound) {
+		t.Fatalf("expected error %v, got %v", videosvc.ErrVideoNotFound, err)
 	}
 }
 
@@ -117,8 +119,8 @@ func TestInteractionServicePublishCommentMapsConcurrentVideoDelete(t *testing.T)
 	}
 
 	err := svc.PublishComment(context.Background(), 1, 2, "hello")
-	if !errors.Is(err, ErrVideoNotFound) {
-		t.Fatalf("expected error %v, got %v", ErrVideoNotFound, err)
+	if !errors.Is(err, videosvc.ErrVideoNotFound) {
+		t.Fatalf("expected error %v, got %v", videosvc.ErrVideoNotFound, err)
 	}
 }
 
@@ -158,15 +160,15 @@ func TestInteractionServiceDeleteCommentMapsConcurrentDeleteToNotFound(t *testin
 func TestInteractionServiceListUserCommentsBuildsCursorResponse(t *testing.T) {
 	svc := interactionService{
 		repo: fakeInteractionRepository{
-			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-				return &repository.UserProfile{ID: userID}, nil
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{ID: userID}, nil
 			},
-			listUserCommentsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error) {
+			listUserCommentsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error) {
 				if userID != 5 || cursor != 10 || limit != 20 {
 					t.Fatalf("unexpected params user=%d cursor=%d limit=%d", userID, cursor, limit)
 				}
-				return &repository.UserCommentListResult{
-					Items: []repository.UserCommentItem{{
+				return &interactionrepo.UserCommentListResult{
+					Items: []interactionrepo.UserCommentItem{{
 						ID:        9,
 						UserID:    5,
 						VideoID:   7,
@@ -199,11 +201,11 @@ func TestInteractionServiceListUserCommentsBuildsCursorResponse(t *testing.T) {
 func TestInteractionServiceListUserCommentsReturnsEmptyList(t *testing.T) {
 	svc := interactionService{
 		repo: fakeInteractionRepository{
-			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-				return &repository.UserProfile{ID: userID}, nil
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{ID: userID}, nil
 			},
-			listUserCommentsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error) {
-				return &repository.UserCommentListResult{}, nil
+			listUserCommentsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*interactionrepo.UserCommentListResult, error) {
+				return &interactionrepo.UserCommentListResult{}, nil
 			},
 		},
 	}
@@ -239,8 +241,8 @@ func TestBuildUserCommentListHandlesNilResult(t *testing.T) {
 func TestBuildUserCommentListBuildsItems(t *testing.T) {
 	createdAt := time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC)
 
-	got := buildUserCommentList(&repository.UserCommentListResult{
-		Items: []repository.UserCommentItem{{
+	got := buildUserCommentList(&interactionrepo.UserCommentListResult{
+		Items: []interactionrepo.UserCommentItem{{
 			ID:        9,
 			UserID:    5,
 			VideoID:   7,

@@ -1,11 +1,13 @@
-package service
+package relation
 
 import (
 	"context"
 	"errors"
 	"strconv"
 	relation "video-platform/biz/model/relation"
-	"video-platform/biz/repository"
+	relationrepo "video-platform/biz/repository/relation"
+	userrepo "video-platform/biz/repository/user"
+	usersvc "video-platform/biz/service/user"
 	"video-platform/pkg/pagination"
 
 	"gorm.io/gorm"
@@ -17,38 +19,38 @@ const (
 )
 
 type relationRepository interface {
-	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	FollowUser(ctx context.Context, fromUserID, toUserID uint) error
 	UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error)
-	ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
-	ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
-	ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error)
+	ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error)
+	ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error)
+	ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error)
 }
 
 type defaultRelationRepository struct{}
 
-func (defaultRelationRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-	return repository.GetUserByID(ctx, userID)
+func (defaultRelationRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+	return userrepo.GetUserByID(ctx, userID)
 }
 
 func (defaultRelationRepository) FollowUser(ctx context.Context, fromUserID, toUserID uint) error {
-	return repository.FollowUser(ctx, fromUserID, toUserID)
+	return relationrepo.FollowUser(ctx, fromUserID, toUserID)
 }
 
 func (defaultRelationRepository) UnfollowUser(ctx context.Context, fromUserID, toUserID uint) (bool, error) {
-	return repository.UnfollowUser(ctx, fromUserID, toUserID)
+	return relationrepo.UnfollowUser(ctx, fromUserID, toUserID)
 }
 
-func (defaultRelationRepository) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
-	return repository.ListFollowings(ctx, userID, cursor, limit)
+func (defaultRelationRepository) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error) {
+	return relationrepo.ListFollowings(ctx, userID, cursor, limit)
 }
 
-func (defaultRelationRepository) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
-	return repository.ListFollowers(ctx, userID, cursor, limit)
+func (defaultRelationRepository) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error) {
+	return relationrepo.ListFollowers(ctx, userID, cursor, limit)
 }
 
-func (defaultRelationRepository) ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*repository.RelationListResult, error) {
-	return repository.ListFriends(ctx, userID, cursor, limit)
+func (defaultRelationRepository) ListFriends(ctx context.Context, userID uint, cursor uint, limit int) (*relationrepo.RelationListResult, error) {
+	return relationrepo.ListFriends(ctx, userID, cursor, limit)
 }
 
 type relationService struct {
@@ -68,7 +70,7 @@ func (s relationService) RelationAction(ctx context.Context, fromUserID, toUserI
 
 	if _, err := s.repo.GetUserByID(ctx, toUserID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
+			return usersvc.ErrUserNotFound
 		}
 		return err
 	}
@@ -99,7 +101,7 @@ func (s relationService) RelationAction(ctx context.Context, fromUserID, toUserI
 func (s relationService) ListFollowings(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -115,7 +117,7 @@ func (s relationService) ListFollowings(ctx context.Context, userID uint, cursor
 func (s relationService) ListFollowers(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -131,7 +133,7 @@ func (s relationService) ListFollowers(ctx context.Context, userID uint, cursor 
 func (s relationService) ListFriends(ctx context.Context, userID uint, cursor uint, limit int32) (*relation.SocialListWithTotal, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -144,7 +146,7 @@ func (s relationService) ListFriends(ctx context.Context, userID uint, cursor ui
 	return buildSocialList(result), nil
 }
 
-func buildSocialList(result *repository.RelationListResult) *relation.SocialListWithTotal {
+func buildSocialList(result *relationrepo.RelationListResult) *relation.SocialListWithTotal {
 	items := make([]*relation.SocialProfile, 0)
 	if result == nil {
 		return &relation.SocialListWithTotal{

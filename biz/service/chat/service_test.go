@@ -1,4 +1,4 @@
-package service
+package chat
 
 import (
 	"context"
@@ -6,13 +6,15 @@ import (
 	"testing"
 	"video-platform/biz/dal/model"
 	chat "video-platform/biz/model/chat"
-	"video-platform/biz/repository"
+	chatrepo "video-platform/biz/repository/chat"
+	userrepo "video-platform/biz/repository/user"
+	interactionsvc "video-platform/biz/service/interaction"
 
 	"gorm.io/gorm"
 )
 
 type fakeChatRepo struct {
-	users         map[uint]*repository.UserProfile
+	users         map[uint]*userrepo.UserProfile
 	members       map[uint]map[uint]*model.ChatRoomMember
 	rooms         map[uint]*model.ChatRoom
 	createdRoom   *model.ChatRoom
@@ -21,7 +23,7 @@ type fakeChatRepo struct {
 	deletedMember bool
 }
 
-func (f *fakeChatRepo) GetUserByID(_ context.Context, userID uint) (*repository.UserProfile, error) {
+func (f *fakeChatRepo) GetUserByID(_ context.Context, userID uint) (*userrepo.UserProfile, error) {
 	if user, ok := f.users[userID]; ok {
 		return user, nil
 	}
@@ -35,8 +37,8 @@ func (f *fakeChatRepo) CreateChatRoom(_ context.Context, room *model.ChatRoom, m
 	return nil
 }
 
-func (f *fakeChatRepo) ListChatRooms(_ context.Context, _ uint, _ uint, _ int) (*repository.ChatRoomListResult, error) {
-	return &repository.ChatRoomListResult{}, nil
+func (f *fakeChatRepo) ListChatRooms(_ context.Context, _ uint, _ uint, _ int) (*chatrepo.ChatRoomListResult, error) {
+	return &chatrepo.ChatRoomListResult{}, nil
 }
 
 func (f *fakeChatRepo) GetChatRoomByID(_ context.Context, roomID uint) (*model.ChatRoom, error) {
@@ -55,12 +57,12 @@ func (f *fakeChatRepo) GetChatRoomMember(_ context.Context, roomID, userID uint)
 	return nil, gorm.ErrRecordNotFound
 }
 
-func (f *fakeChatRepo) ListChatRoomMembers(_ context.Context, _ uint, _ uint, _ int) (*repository.ChatRoomMemberListResult, error) {
-	return &repository.ChatRoomMemberListResult{}, nil
+func (f *fakeChatRepo) ListChatRoomMembers(_ context.Context, _ uint, _ uint, _ int) (*chatrepo.ChatRoomMemberListResult, error) {
+	return &chatrepo.ChatRoomMemberListResult{}, nil
 }
 
-func (f *fakeChatRepo) ListChatMessages(_ context.Context, _ uint, _ uint, _ int) (*repository.ChatMessageListResult, error) {
-	return &repository.ChatMessageListResult{}, nil
+func (f *fakeChatRepo) ListChatMessages(_ context.Context, _ uint, _ uint, _ int) (*chatrepo.ChatMessageListResult, error) {
+	return &chatrepo.ChatMessageListResult{}, nil
 }
 
 func (f *fakeChatRepo) AddChatRoomMembers(_ context.Context, _ []model.ChatRoomMember) error {
@@ -81,7 +83,7 @@ func (f *fakeChatRepo) CreateChatMessage(_ context.Context, _ *model.ChatMessage
 
 func TestChatServiceCreatePrivateRoomUsesMemberRole(t *testing.T) {
 	repo := &fakeChatRepo{
-		users: map[uint]*repository.UserProfile{
+		users: map[uint]*userrepo.UserProfile{
 			1: {ID: 1, Username: "alice"},
 			2: {ID: 2, Username: "bob"},
 		},
@@ -110,7 +112,7 @@ func TestChatServiceCreatePrivateRoomUsesMemberRole(t *testing.T) {
 
 func TestChatServiceCreatePrivateRoomRequiresTwoMembers(t *testing.T) {
 	repo := &fakeChatRepo{
-		users: map[uint]*repository.UserProfile{
+		users: map[uint]*userrepo.UserProfile{
 			1: {ID: 1, Username: "alice"},
 		},
 	}
@@ -126,7 +128,7 @@ func TestChatServiceCreatePrivateRoomRequiresTwoMembers(t *testing.T) {
 
 func TestChatServiceCreateGroupRequiresName(t *testing.T) {
 	repo := &fakeChatRepo{
-		users: map[uint]*repository.UserProfile{
+		users: map[uint]*userrepo.UserProfile{
 			1: {ID: 1, Username: "alice"},
 			2: {ID: 2, Username: "bob"},
 		},
@@ -183,7 +185,7 @@ func TestChatServiceMarkRoomReadMapsMissingMessage(t *testing.T) {
 
 func TestChatServiceInviteMembersRequiresOwnerOrAdmin(t *testing.T) {
 	repo := &fakeChatRepo{
-		users: map[uint]*repository.UserProfile{
+		users: map[uint]*userrepo.UserProfile{
 			2: {ID: 2, Username: "bob"},
 		},
 		rooms: map[uint]*model.ChatRoom{
@@ -198,7 +200,7 @@ func TestChatServiceInviteMembersRequiresOwnerOrAdmin(t *testing.T) {
 	svc := chatService{repo: repo}
 
 	err := svc.InviteMembers(context.Background(), 1, 10, []string{"2"})
-	if !errors.Is(err, ErrNoPermission) {
+	if !errors.Is(err, interactionsvc.ErrNoPermission) {
 		t.Fatalf("expected ErrNoPermission, got %v", err)
 	}
 }
@@ -218,5 +220,24 @@ func TestChatServiceMarkRoomReadAllowsIdempotentUpdate(t *testing.T) {
 
 	if err := svc.MarkRoomRead(context.Background(), 1, 10, 99); err != nil {
 		t.Fatalf("MarkRoomRead returned error: %v", err)
+	}
+}
+
+func TestChatServiceCreateMessageRejectsEmptyContent(t *testing.T) {
+	repo := &fakeChatRepo{
+		rooms: map[uint]*model.ChatRoom{
+			10: {ID: 10, Type: chatRoomTypeGroup},
+		},
+		members: map[uint]map[uint]*model.ChatRoomMember{
+			10: {
+				1: {RoomID: 10, UserID: 1, Role: chatMemberRoleMember},
+			},
+		},
+	}
+	svc := chatService{repo: repo}
+
+	_, err := svc.CreateMessage(context.Background(), 1, 10, "   ", "client-msg-id")
+	if !errors.Is(err, interactionsvc.ErrCommentEmpty) {
+		t.Fatalf("expected ErrCommentEmpty, got %v", err)
 	}
 }

@@ -1,4 +1,4 @@
-package service
+package chat
 
 import (
 	"context"
@@ -8,7 +8,10 @@ import (
 	"time"
 	"video-platform/biz/dal/model"
 	chat "video-platform/biz/model/chat"
-	"video-platform/biz/repository"
+	chatrepo "video-platform/biz/repository/chat"
+	userrepo "video-platform/biz/repository/user"
+	interactionsvc "video-platform/biz/service/interaction"
+	usersvc "video-platform/biz/service/user"
 	"video-platform/pkg/pagination"
 
 	"gorm.io/gorm"
@@ -26,13 +29,13 @@ const (
 )
 
 type chatRepository interface {
-	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	CreateChatRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error
-	ListChatRooms(ctx context.Context, userID uint, cursor uint, limit int) (*repository.ChatRoomListResult, error)
+	ListChatRooms(ctx context.Context, userID uint, cursor uint, limit int) (*chatrepo.ChatRoomListResult, error)
 	GetChatRoomByID(ctx context.Context, roomID uint) (*model.ChatRoom, error)
 	GetChatRoomMember(ctx context.Context, roomID, userID uint) (*model.ChatRoomMember, error)
-	ListChatRoomMembers(ctx context.Context, roomID uint, cursor uint, limit int) (*repository.ChatRoomMemberListResult, error)
-	ListChatMessages(ctx context.Context, roomID uint, cursor uint, limit int) (*repository.ChatMessageListResult, error)
+	ListChatRoomMembers(ctx context.Context, roomID uint, cursor uint, limit int) (*chatrepo.ChatRoomMemberListResult, error)
+	ListChatMessages(ctx context.Context, roomID uint, cursor uint, limit int) (*chatrepo.ChatMessageListResult, error)
 	AddChatRoomMembers(ctx context.Context, members []model.ChatRoomMember) error
 	DeleteChatRoomMember(ctx context.Context, roomID, userID uint) (bool, error)
 	UpdateChatLastReadMessageID(ctx context.Context, roomID, userID, messageID uint) error
@@ -41,48 +44,48 @@ type chatRepository interface {
 
 type defaultChatRepository struct{}
 
-func (defaultChatRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-	return repository.GetUserByID(ctx, userID)
+func (defaultChatRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+	return userrepo.GetUserByID(ctx, userID)
 }
 
 func (defaultChatRepository) CreateChatRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error {
-	return repository.CreateChatRoom(ctx, room, members)
+	return chatrepo.CreateChatRoom(ctx, room, members)
 }
 
-func (defaultChatRepository) ListChatRooms(ctx context.Context, userID uint, cursor uint, limit int) (*repository.ChatRoomListResult, error) {
-	return repository.ListChatRooms(ctx, userID, cursor, limit)
+func (defaultChatRepository) ListChatRooms(ctx context.Context, userID uint, cursor uint, limit int) (*chatrepo.ChatRoomListResult, error) {
+	return chatrepo.ListChatRooms(ctx, userID, cursor, limit)
 }
 
 func (defaultChatRepository) GetChatRoomByID(ctx context.Context, roomID uint) (*model.ChatRoom, error) {
-	return repository.GetChatRoomByID(ctx, roomID)
+	return chatrepo.GetChatRoomByID(ctx, roomID)
 }
 
 func (defaultChatRepository) GetChatRoomMember(ctx context.Context, roomID, userID uint) (*model.ChatRoomMember, error) {
-	return repository.GetChatRoomMember(ctx, roomID, userID)
+	return chatrepo.GetChatRoomMember(ctx, roomID, userID)
 }
 
-func (defaultChatRepository) ListChatRoomMembers(ctx context.Context, roomID uint, cursor uint, limit int) (*repository.ChatRoomMemberListResult, error) {
-	return repository.ListChatRoomMembers(ctx, roomID, cursor, limit)
+func (defaultChatRepository) ListChatRoomMembers(ctx context.Context, roomID uint, cursor uint, limit int) (*chatrepo.ChatRoomMemberListResult, error) {
+	return chatrepo.ListChatRoomMembers(ctx, roomID, cursor, limit)
 }
 
-func (defaultChatRepository) ListChatMessages(ctx context.Context, roomID uint, cursor uint, limit int) (*repository.ChatMessageListResult, error) {
-	return repository.ListChatMessages(ctx, roomID, cursor, limit)
+func (defaultChatRepository) ListChatMessages(ctx context.Context, roomID uint, cursor uint, limit int) (*chatrepo.ChatMessageListResult, error) {
+	return chatrepo.ListChatMessages(ctx, roomID, cursor, limit)
 }
 
 func (defaultChatRepository) AddChatRoomMembers(ctx context.Context, members []model.ChatRoomMember) error {
-	return repository.AddChatRoomMembers(ctx, members)
+	return chatrepo.AddChatRoomMembers(ctx, members)
 }
 
 func (defaultChatRepository) DeleteChatRoomMember(ctx context.Context, roomID, userID uint) (bool, error) {
-	return repository.DeleteChatRoomMember(ctx, roomID, userID)
+	return chatrepo.DeleteChatRoomMember(ctx, roomID, userID)
 }
 
 func (defaultChatRepository) UpdateChatLastReadMessageID(ctx context.Context, roomID, userID, messageID uint) error {
-	return repository.UpdateChatLastReadMessageID(ctx, roomID, userID, messageID)
+	return chatrepo.UpdateChatLastReadMessageID(ctx, roomID, userID, messageID)
 }
 
 func (defaultChatRepository) CreateChatMessage(ctx context.Context, message *model.ChatMessage) error {
-	return repository.CreateChatMessage(ctx, message)
+	return chatrepo.CreateChatMessage(ctx, message)
 }
 
 type chatService struct {
@@ -96,7 +99,7 @@ var Chat = chatService{
 func (s chatService) CreateRoom(ctx context.Context, ownerID uint, req *chat.CreateChatRoomRequest) (*chat.ChatRoom, error) {
 	if _, err := s.repo.GetUserByID(ctx, ownerID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -123,7 +126,7 @@ func (s chatService) CreateRoom(ctx context.Context, ownerID uint, req *chat.Cre
 	for _, memberID := range memberIDs {
 		if _, err := s.repo.GetUserByID(ctx, memberID); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, ErrUserNotFound
+				return nil, usersvc.ErrUserNotFound
 			}
 			return nil, err
 		}
@@ -157,7 +160,7 @@ func (s chatService) CreateRoom(ctx context.Context, ownerID uint, req *chat.Cre
 		return nil, err
 	}
 
-	return buildChatRoom(repository.ChatRoomItem{Room: *room}), nil
+	return buildChatRoom(chatrepo.ChatRoomItem{Room: *room}), nil
 }
 
 func (s chatService) ListRooms(ctx context.Context, userID uint, cursor uint, limit int32) (*chat.ChatRoomList, error) {
@@ -201,7 +204,7 @@ func (s chatService) InviteMembers(ctx context.Context, userID, roomID uint, raw
 		return err
 	}
 	if room.Type != chatRoomTypeGroup {
-		return ErrNoPermission
+		return interactionsvc.ErrNoPermission
 	}
 	operator, err := s.repo.GetChatRoomMember(ctx, roomID, userID)
 	if err != nil {
@@ -211,7 +214,7 @@ func (s chatService) InviteMembers(ctx context.Context, userID, roomID uint, raw
 		return err
 	}
 	if operator.Role != chatMemberRoleOwner && operator.Role != "admin" {
-		return ErrNoPermission
+		return interactionsvc.ErrNoPermission
 	}
 
 	memberIDs, err := normalizeChatMemberIDs(0, rawMemberIDs)
@@ -227,7 +230,7 @@ func (s chatService) InviteMembers(ctx context.Context, userID, roomID uint, raw
 	for _, memberID := range memberIDs {
 		if _, err := s.repo.GetUserByID(ctx, memberID); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrUserNotFound
+				return usersvc.ErrUserNotFound
 			}
 			return err
 		}
@@ -288,7 +291,7 @@ func (s chatService) CreateMessage(ctx context.Context, senderID, roomID uint, c
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, ErrCommentEmpty
+		return nil, interactionsvc.ErrCommentEmpty
 	}
 
 	message := &model.ChatMessage{
@@ -307,7 +310,7 @@ func (s chatService) CreateMessage(ctx context.Context, senderID, roomID uint, c
 	if err != nil {
 		return nil, err
 	}
-	return buildChatMessage(repository.ChatMessageItem{Message: *message, Sender: *sender}), nil
+	return buildChatMessage(chatrepo.ChatMessageItem{Message: *message, Sender: *sender}), nil
 }
 
 func (s chatService) ensureRoomMember(ctx context.Context, roomID, userID uint) error {
@@ -336,7 +339,7 @@ func normalizeChatMemberIDs(ownerID uint, rawIDs []string) ([]uint, error) {
 	for _, rawID := range rawIDs {
 		parsedID, err := strconv.ParseUint(rawID, 10, 64)
 		if err != nil || parsedID == 0 {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		id := uint(parsedID)
 		if _, ok := seen[id]; ok {
@@ -411,7 +414,7 @@ func mapChatMessageStatusToPB(status string) chat.ChatMessageStatus {
 	}
 }
 
-func buildChatRoomList(result *repository.ChatRoomListResult) *chat.ChatRoomList {
+func buildChatRoomList(result *chatrepo.ChatRoomListResult) *chat.ChatRoomList {
 	items := make([]*chat.ChatRoom, 0)
 	if result == nil {
 		return &chat.ChatRoomList{Items: items}
@@ -432,7 +435,7 @@ func buildChatRoomList(result *repository.ChatRoomListResult) *chat.ChatRoomList
 	}
 }
 
-func buildChatRoom(item repository.ChatRoomItem) *chat.ChatRoom {
+func buildChatRoom(item chatrepo.ChatRoomItem) *chat.ChatRoom {
 	room := item.Room
 	resp := &chat.ChatRoom{
 		Id:          strconv.FormatUint(uint64(room.ID), 10),
@@ -447,11 +450,11 @@ func buildChatRoom(item repository.ChatRoomItem) *chat.ChatRoom {
 		resp.LastMessageAt = room.LastMessageAt.Format(time.RFC3339)
 	}
 	if item.LastMessage != nil {
-		sender := repository.UserProfile{}
+		sender := userrepo.UserProfile{}
 		if item.Sender != nil {
 			sender = *item.Sender
 		}
-		resp.LastMessage = buildChatMessage(repository.ChatMessageItem{
+		resp.LastMessage = buildChatMessage(chatrepo.ChatMessageItem{
 			Message: *item.LastMessage,
 			Sender:  sender,
 		})
@@ -459,7 +462,7 @@ func buildChatRoom(item repository.ChatRoomItem) *chat.ChatRoom {
 	return resp
 }
 
-func buildChatMessageList(result *repository.ChatMessageListResult) *chat.ChatMessageList {
+func buildChatMessageList(result *chatrepo.ChatMessageListResult) *chat.ChatMessageList {
 	items := make([]*chat.ChatMessage, 0)
 	if result == nil {
 		return &chat.ChatMessageList{Items: items}
@@ -480,7 +483,7 @@ func buildChatMessageList(result *repository.ChatMessageListResult) *chat.ChatMe
 	}
 }
 
-func buildChatMessage(item repository.ChatMessageItem) *chat.ChatMessage {
+func buildChatMessage(item chatrepo.ChatMessageItem) *chat.ChatMessage {
 	message := item.Message
 	return &chat.ChatMessage{
 		Id:              strconv.FormatUint(uint64(message.ID), 10),
@@ -496,7 +499,7 @@ func buildChatMessage(item repository.ChatMessageItem) *chat.ChatMessage {
 	}
 }
 
-func buildChatRoomMemberList(result *repository.ChatRoomMemberListResult) *chat.ChatRoomMemberList {
+func buildChatRoomMemberList(result *chatrepo.ChatRoomMemberListResult) *chat.ChatRoomMemberList {
 	items := make([]*chat.ChatRoomMember, 0)
 	if result == nil {
 		return &chat.ChatRoomMemberList{Items: items}

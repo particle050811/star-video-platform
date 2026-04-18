@@ -1,4 +1,4 @@
-package service
+package video
 
 import (
 	"context"
@@ -9,7 +9,10 @@ import (
 	"time"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/video"
-	"video-platform/biz/repository"
+	commentrepo "video-platform/biz/repository/comment"
+	userrepo "video-platform/biz/repository/user"
+	videorepo "video-platform/biz/repository/video"
+	usersvc "video-platform/biz/service/user"
 	"video-platform/pkg/pagination"
 	"video-platform/pkg/parser"
 	"video-platform/pkg/upload"
@@ -19,14 +22,14 @@ import (
 
 type videoRepository interface {
 	CreateVideo(ctx context.Context, video *model.Video) error
-	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	ListUserIDsByUsername(ctx context.Context, username string) ([]uint, error)
 	GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error)
-	ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*repository.VideoListResult, error)
-	SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error)
-	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error)
-	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error)
-	ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error)
+	ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*videorepo.VideoListResult, error)
+	SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*videorepo.VideoListResult, error)
+	ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*commentrepo.VideoCommentListResult, error)
+	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error)
+	ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*videorepo.VideoListResult, error)
 }
 
 type videoUploadProvider interface {
@@ -40,39 +43,39 @@ type videoUploadProvider interface {
 type defaultVideoRepository struct{}
 
 func (defaultVideoRepository) CreateVideo(ctx context.Context, video *model.Video) error {
-	return repository.CreateVideo(ctx, video)
+	return videorepo.CreateVideo(ctx, video)
 }
 
-func (defaultVideoRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-	return repository.GetUserByID(ctx, userID)
+func (defaultVideoRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+	return userrepo.GetUserByID(ctx, userID)
 }
 
 func (defaultVideoRepository) ListUserIDsByUsername(ctx context.Context, username string) ([]uint, error) {
-	return repository.ListUserIDsByUsername(ctx, username)
+	return userrepo.ListUserIDsByUsername(ctx, username)
 }
 
 func (defaultVideoRepository) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
-	return repository.GetVideoByID(ctx, videoID)
+	return videorepo.GetVideoByID(ctx, videoID)
 }
 
-func (defaultVideoRepository) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*repository.VideoListResult, error) {
-	return repository.ListVideosByUserID(ctx, userID, cursor, limit)
+func (defaultVideoRepository) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*videorepo.VideoListResult, error) {
+	return videorepo.ListVideosByUserID(ctx, userID, cursor, limit)
 }
 
-func (defaultVideoRepository) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*repository.VideoListResult, error) {
-	return repository.SearchVideos(ctx, keywords, userIDs, fromDate, toDate, sortBy, cursor, limit)
+func (defaultVideoRepository) SearchVideos(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*videorepo.VideoListResult, error) {
+	return videorepo.SearchVideos(ctx, keywords, userIDs, fromDate, toDate, sortBy, cursor, limit)
 }
 
-func (defaultVideoRepository) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error) {
-	return repository.ListVideoComments(ctx, videoID, cursor, limit)
+func (defaultVideoRepository) ListVideoComments(ctx context.Context, videoID uint, cursor uint, limit int) (*commentrepo.VideoCommentListResult, error) {
+	return commentrepo.ListVideoComments(ctx, videoID, cursor, limit)
 }
 
-func (defaultVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]repository.UserProfile, error) {
-	return repository.ListUserSnapshotsByIDs(ctx, userIDs)
+func (defaultVideoRepository) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error) {
+	return userrepo.ListUserSnapshotsByIDs(ctx, userIDs)
 }
 
-func (defaultVideoRepository) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*repository.VideoListResult, error) {
-	return repository.ListHotVideos(ctx, cursor, limit)
+func (defaultVideoRepository) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*videorepo.VideoListResult, error) {
+	return videorepo.ListHotVideos(ctx, cursor, limit)
 }
 
 type defaultVideoUploadProvider struct{}
@@ -117,7 +120,7 @@ func (s videoService) PublishVideo(ctx context.Context, userID uint, title, desc
 
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
+			return usersvc.ErrUserNotFound
 		}
 		return err
 	}
@@ -174,7 +177,7 @@ func (s videoService) PublishVideo(ctx context.Context, userID uint, title, desc
 func (s videoService) ListPublishedVideos(ctx context.Context, userID uint, cursor uint, limit int32) (*v1.VideoList, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, usersvc.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -244,7 +247,7 @@ func (s videoService) GetHotVideos(ctx context.Context, cursor parser.HotVideoCu
 	return buildHotVideoList(result), nil
 }
 
-func buildVideoCommentList(result *repository.VideoCommentListResult, users []repository.UserProfile) *v1.VideoCommentList {
+func buildVideoCommentList(result *commentrepo.VideoCommentListResult, users []userrepo.UserProfile) *v1.VideoCommentList {
 	items := make([]*v1.VideoComment, 0)
 	if result == nil {
 		return &v1.VideoCommentList{
@@ -252,7 +255,7 @@ func buildVideoCommentList(result *repository.VideoCommentListResult, users []re
 		}
 	}
 
-	userMap := make(map[uint]repository.UserProfile, len(users))
+	userMap := make(map[uint]userrepo.UserProfile, len(users))
 	for _, user := range users {
 		userMap[user.ID] = user
 	}
@@ -284,7 +287,7 @@ func buildVideoCommentList(result *repository.VideoCommentListResult, users []re
 	}
 }
 
-func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
+func buildVideoList(result *videorepo.VideoListResult) *v1.VideoList {
 	items := make([]*v1.Video, 0)
 	if result == nil {
 		return &v1.VideoList{
@@ -309,7 +312,11 @@ func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
 	}
 }
 
-func buildHotVideoList(result *repository.VideoListResult) *v1.VideoList {
+func BuildVideoList(result *videorepo.VideoListResult) *v1.VideoList {
+	return buildVideoList(result)
+}
+
+func buildHotVideoList(result *videorepo.VideoListResult) *v1.VideoList {
 	data := buildVideoList(result)
 	if result != nil && result.HasMore {
 		data.NextCursor = result.NextCursorToken

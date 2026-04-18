@@ -1,9 +1,10 @@
-package repository
+package chat
 
 import (
 	"context"
 	dbdal "video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
+	userrepo "video-platform/biz/repository/user"
 )
 
 type chatDBStore interface {
@@ -21,7 +22,7 @@ type chatDBStore interface {
 }
 
 type chatSnapshotStore interface {
-	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserProfile, error)
+	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error)
 }
 
 type chatStore struct {
@@ -40,7 +41,7 @@ type ChatRoomItem struct {
 	LastMessage *model.ChatMessage
 	UnreadCount int64
 	MemberCount int64
-	Sender      *UserProfile
+	Sender      *userrepo.UserProfile
 }
 
 type ChatMessageListResult struct {
@@ -51,7 +52,7 @@ type ChatMessageListResult struct {
 
 type ChatMessageItem struct {
 	Message model.ChatMessage
-	Sender  UserProfile
+	Sender  userrepo.UserProfile
 }
 
 type ChatRoomMemberListResult struct {
@@ -62,13 +63,13 @@ type ChatRoomMemberListResult struct {
 
 type ChatRoomMemberItem struct {
 	Member model.ChatRoomMember
-	User   UserProfile
+	User   userrepo.UserProfile
 }
 
 type defaultChatSnapshotStore struct{}
 
-func (defaultChatSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserProfile, error) {
-	return ListUserSnapshotsByIDs(ctx, userIDs)
+func (defaultChatSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error) {
+	return userrepo.ListUserSnapshotsByIDs(ctx, userIDs)
 }
 
 var chats = chatStore{
@@ -267,13 +268,13 @@ func (s chatStore) ListMessages(ctx context.Context, roomID uint, cursor uint, l
 	}, nil
 }
 
-func (s chatStore) userMap(ctx context.Context, userIDs []uint) (map[uint]UserProfile, error) {
+func (s chatStore) userMap(ctx context.Context, userIDs []uint) (map[uint]userrepo.UserProfile, error) {
 	users, err := s.snapshots.ListUserSnapshotsByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	userMap := make(map[uint]UserProfile, len(users))
+	userMap := make(map[uint]userrepo.UserProfile, len(users))
 	for _, user := range users {
 		userMap[user.ID] = user
 	}

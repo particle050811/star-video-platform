@@ -1,21 +1,21 @@
-package service
+package user
 
 import (
 	"context"
 	"errors"
 	"testing"
 	"video-platform/biz/dal/model"
-	"video-platform/biz/repository"
+	userrepo "video-platform/biz/repository/user"
 	"video-platform/pkg/auth"
 
 	"gorm.io/gorm"
 )
 
 type fakeUserRepository struct {
-	createUserFn       func(ctx context.Context, user *model.User) error
+	createUserFn        func(ctx context.Context, user *model.User) error
 	getUserByUsernameFn func(ctx context.Context, username string) (*model.User, error)
-	getUserByIDFn      func(ctx context.Context, userID uint) (*repository.UserProfile, error)
-	updateUserAvatarFn func(ctx context.Context, userID uint, avatarURL string) error
+	getUserByIDFn       func(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
+	updateUserAvatarFn  func(ctx context.Context, userID uint, avatarURL string) error
 }
 
 func (f fakeUserRepository) CreateUser(ctx context.Context, user *model.User) error {
@@ -26,7 +26,7 @@ func (f fakeUserRepository) GetUserByUsername(ctx context.Context, username stri
 	return f.getUserByUsernameFn(ctx, username)
 }
 
-func (f fakeUserRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+func (f fakeUserRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
 	return f.getUserByIDFn(ctx, userID)
 }
 
@@ -192,7 +192,7 @@ func TestUserServiceRefreshTokenMapsKnownErrors(t *testing.T) {
 func TestUserServiceGetUserInfoMapsRecordNotFound(t *testing.T) {
 	svc := userService{
 		repo: fakeUserRepository{
-			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
 				if userID != 99 {
 					t.Fatalf("expected user id %d, got %d", 99, userID)
 				}

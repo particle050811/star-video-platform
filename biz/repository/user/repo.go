@@ -1,9 +1,9 @@
-package repository
+package user
 
 import (
 	"context"
-	"video-platform/biz/dal/model"
 	dbdal "video-platform/biz/dal/db"
+	"video-platform/biz/dal/model"
 	rdbdal "video-platform/biz/dal/rdb"
 	"video-platform/pkg/constant"
 )

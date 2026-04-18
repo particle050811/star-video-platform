@@ -1,4 +1,4 @@
-package service
+package user
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"video-platform/biz/dal/model"
 	v1 "video-platform/biz/model/user"
-	"video-platform/biz/repository"
+	userrepo "video-platform/biz/repository/user"
 	"video-platform/pkg/auth"
 	"video-platform/pkg/upload"
 
@@ -17,7 +17,7 @@ import (
 type userRepository interface {
 	CreateUser(ctx context.Context, user *model.User) error
 	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
-	GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error)
+	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error
 }
 
@@ -37,19 +37,19 @@ type uploadProvider interface {
 type defaultUserRepository struct{}
 
 func (defaultUserRepository) CreateUser(ctx context.Context, user *model.User) error {
-	return repository.CreateUser(ctx, user)
+	return userrepo.CreateUser(ctx, user)
 }
 
 func (defaultUserRepository) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
-	return repository.GetUserByUsername(ctx, username)
+	return userrepo.GetUserByUsername(ctx, username)
 }
 
-func (defaultUserRepository) GetUserByID(ctx context.Context, userID uint) (*repository.UserProfile, error) {
-	return repository.GetUserByID(ctx, userID)
+func (defaultUserRepository) GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+	return userrepo.GetUserByID(ctx, userID)
 }
 
 func (defaultUserRepository) UpdateUserAvatar(ctx context.Context, userID uint, avatarURL string) error {
-	return repository.UpdateUserAvatar(ctx, userID, avatarURL)
+	return userrepo.UpdateUserAvatar(ctx, userID, avatarURL)
 }
 
 type defaultAuthProvider struct{}

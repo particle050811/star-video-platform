@@ -1,9 +1,10 @@
-package repository
+package relation
 
 import (
 	"context"
 	dbdal "video-platform/biz/dal/db"
 	rdbdal "video-platform/biz/dal/rdb"
+	userrepo "video-platform/biz/repository/user"
 )
 
 type relationDBStore interface {
@@ -31,7 +32,7 @@ type relationCacheStore interface {
 }
 
 type relationSnapshotStore interface {
-	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserProfile, error)
+	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error)
 }
 
 type relationStore struct {
@@ -41,7 +42,7 @@ type relationStore struct {
 }
 
 type RelationListResult struct {
-	Users      []UserProfile
+	Users      []userrepo.UserProfile
 	Total      int64
 	NextCursor uint
 	HasMore    bool
@@ -49,8 +50,8 @@ type RelationListResult struct {
 
 type defaultRelationSnapshotStore struct{}
 
-func (defaultRelationSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]UserProfile, error) {
-	return ListUserSnapshotsByIDs(ctx, userIDs)
+func (defaultRelationSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error) {
+	return userrepo.ListUserSnapshotsByIDs(ctx, userIDs)
 }
 
 var relations = relationStore{

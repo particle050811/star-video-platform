@@ -1,10 +1,12 @@
-package service
+package video
 
 import (
 	"testing"
 	"time"
 	"video-platform/biz/dal/model"
-	"video-platform/biz/repository"
+	commentrepo "video-platform/biz/repository/comment"
+	userrepo "video-platform/biz/repository/user"
+	videorepo "video-platform/biz/repository/video"
 )
 
 func TestBuildVideo(t *testing.T) {
@@ -72,7 +74,7 @@ func TestBuildVideoList(t *testing.T) {
 		},
 	}
 
-	got := buildVideoList(&repository.VideoListResult{
+	got := buildVideoList(&videorepo.VideoListResult{
 		Items:      videos,
 		NextCursor: 2,
 		HasMore:    true,
@@ -98,7 +100,7 @@ func TestBuildVideoList(t *testing.T) {
 }
 
 func TestBuildVideoListReturnsEmptyItems(t *testing.T) {
-	got := buildVideoList(&repository.VideoListResult{})
+	got := buildVideoList(&videorepo.VideoListResult{})
 	if got == nil {
 		t.Fatal("expected non-nil data")
 	}
@@ -137,7 +139,7 @@ func TestBuildHotVideoListHandlesNilResult(t *testing.T) {
 }
 
 func TestBuildVideoCommentListReturnsEmptyItems(t *testing.T) {
-	got := buildVideoCommentList(&repository.VideoCommentListResult{}, nil)
+	got := buildVideoCommentList(&commentrepo.VideoCommentListResult{}, nil)
 	if got == nil {
 		t.Fatal("expected non-nil data")
 	}
@@ -159,5 +161,21 @@ func TestBuildVideoCommentListHandlesNilResult(t *testing.T) {
 	}
 	if len(got.Items) != 0 {
 		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}
+
+func TestBuildVideoCommentListBuildsUsers(t *testing.T) {
+	createdAt := time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC)
+	got := buildVideoCommentList(&commentrepo.VideoCommentListResult{
+		Items: []commentrepo.VideoComment{{
+			ID:        1,
+			UserID:    2,
+			Content:   "hello",
+			LikeCount: 3,
+			CreatedAt: createdAt,
+		}},
+	}, []userrepo.UserProfile{{ID: 2, Username: "alice", AvatarURL: "/a.png"}})
+	if len(got.Items) != 1 || got.Items[0].Username != "alice" {
+		t.Fatalf("unexpected items: %+v", got.Items)
 	}
 }

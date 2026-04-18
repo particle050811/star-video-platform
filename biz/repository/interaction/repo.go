@@ -1,4 +1,4 @@
-package repository
+package interaction
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	dbdal "video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	rdbdal "video-platform/biz/dal/rdb"
-
-	"gorm.io/gorm"
 )
 
 type LikedVideoListResult struct {
@@ -49,10 +47,6 @@ type interactionVideoStore interface {
 	ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error)
 }
 
-type interactionSnapshotStore interface {
-	GetUserByID(ctx context.Context, userID uint) (*UserProfile, error)
-}
-
 type interactionCacheStore interface {
 	DeleteVideoDetailCache(ctx context.Context, videoID uint) error
 	BumpHotVideoCacheVersion(ctx context.Context) error
@@ -60,19 +54,12 @@ type interactionCacheStore interface {
 }
 
 type interactionStore struct {
-	db        interactionDBStore
-	videos    interactionVideoStore
-	snapshots interactionSnapshotStore
-	cache     interactionCacheStore
+	db     interactionDBStore
+	videos interactionVideoStore
+	cache  interactionCacheStore
 }
-
-type defaultInteractionSnapshotStore struct{}
 
 type defaultInteractionCacheStore struct{}
-
-func (defaultInteractionSnapshotStore) GetUserByID(ctx context.Context, userID uint) (*UserProfile, error) {
-	return GetUserByID(ctx, userID)
-}
 
 func (defaultInteractionCacheStore) DeleteVideoDetailCache(ctx context.Context, videoID uint) error {
 	return rdbdal.DeleteVideoDetailCache(ctx, videoID)
@@ -87,10 +74,9 @@ func (defaultInteractionCacheStore) BumpVideoCommentCacheVersion(ctx context.Con
 }
 
 var interactions = interactionStore{
-	db:        dbdal.Interactions,
-	videos:    dbdal.Videos,
-	snapshots: defaultInteractionSnapshotStore{},
-	cache:     defaultInteractionCacheStore{},
+	db:     dbdal.Interactions,
+	videos: dbdal.Videos,
+	cache:  defaultInteractionCacheStore{},
 }
 
 func LikeVideo(ctx context.Context, userID, videoID uint) error {
@@ -225,9 +211,6 @@ func (s interactionStore) DeleteComment(ctx context.Context, commentID uint) err
 	}
 
 	if err := s.db.DeleteComment(ctx, commentID); err != nil {
-		if dbdal.IsRecordNotFound(err) {
-			return gorm.ErrRecordNotFound
-		}
 		return err
 	}
 	s.deleteCommentCaches(ctx, comment.VideoID)

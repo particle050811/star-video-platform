@@ -1,4 +1,4 @@
-package service
+package relation
 
 import "errors"
 
