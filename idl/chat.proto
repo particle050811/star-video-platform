@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package api.video.v1;
+
+option go_package = "/chat";
+
+import "api.proto";
+import "common.proto";
+
+// ChatRoomType 表示聊天房间类型，私聊和群聊统一抽象为 room。
+enum ChatRoomType {
+  CHAT_ROOM_TYPE_UNSPECIFIED = 0;
+  CHAT_ROOM_TYPE_PRIVATE = 1;
+  CHAT_ROOM_TYPE_GROUP = 2;
+}
+
+// ChatMemberRole 表示用户在房间内的角色。
+enum ChatMemberRole {
+  CHAT_MEMBER_ROLE_UNSPECIFIED = 0;
+  CHAT_MEMBER_ROLE_OWNER = 1;
+  CHAT_MEMBER_ROLE_ADMIN = 2;
+  CHAT_MEMBER_ROLE_MEMBER = 3;
+}
+
+// ChatMessageType 表示消息内容类型。
+enum ChatMessageType {
+  CHAT_MESSAGE_TYPE_UNSPECIFIED = 0;
+  CHAT_MESSAGE_TYPE_TEXT = 1;
+  CHAT_MESSAGE_TYPE_IMAGE = 2;
+  CHAT_MESSAGE_TYPE_VIDEO = 3;
+  CHAT_MESSAGE_TYPE_SYSTEM = 4;
+}
+
+// ChatMessageStatus 表示消息状态。
+enum ChatMessageStatus {
+  CHAT_MESSAGE_STATUS_UNSPECIFIED = 0;
+  CHAT_MESSAGE_STATUS_NORMAL = 1;
+  CHAT_MESSAGE_STATUS_RECALLED = 2;
+  CHAT_MESSAGE_STATUS_DELETED = 3;
+}
+
+// ChatMessage 表示房间内的一条消息。
+message ChatMessage {
+  string id = 1;
+  string room_id = 2;
+  string sender_id = 3;
+  string sender_username = 4;
+  string sender_avatar_url = 5;
+  ChatMessageType message_type = 6;
+  string content = 7;
+  ChatMessageStatus status = 8;
+  string client_msg_id = 9;
+  string created_at = 10;
+}
+
+// ChatRoom 表示私聊或群聊房间。
+message ChatRoom {
+  string id = 1;
+  ChatRoomType type = 2;
+  string name = 3;
+  string owner_id = 4;
+  ChatMessage last_message = 5;
+  string last_message_at = 6;
+  int64 unread_count = 7;
+  int64 member_count = 8;
+  string created_at = 9;
+}
+
+// ChatRoomMember 表示用户与房间的成员关系。
+message ChatRoomMember {
+  string room_id = 1;
+  string user_id = 2;
+  string username = 3;
+  string avatar_url = 4;
+  ChatMemberRole role = 5;
+  string joined_at = 6;
+}
+
+message ChatRoomList {
+  repeated ChatRoom items = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message ChatMessageList {
+  repeated ChatMessage items = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message ChatRoomMemberList {
+  repeated ChatRoomMember items = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+// ---------- 聊天模块请求/响应 ----------
+
+message CreateChatRoomRequest {
+  ChatRoomType type = 1 [(.api.body) = "type", (.api.vd) = "$==1 || $==2"];
+  string name = 2 [(.api.body) = "name"];
+  repeated string member_user_ids = 3 [(.api.body) = "member_user_ids"];
+}
+
+message CreateChatRoomResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  ChatRoom data = 2 [(.api.body) = "data"];
+}
+
+message ListChatRoomsRequest {
+  string cursor = 1 [(.api.query) = "cursor"];
+  int32 limit = 2 [(.api.query) = "limit"];
+}
+
+message ListChatRoomsResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  ChatRoomList data = 2 [(.api.body) = "data"];
+}
+
+message ListChatMessagesRequest {
+  string room_id = 1 [(.api.query) = "room_id"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
+}
+
+message ListChatMessagesResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  ChatMessageList data = 2 [(.api.body) = "data"];
+}
+
+message ListChatRoomMembersRequest {
+  string room_id = 1 [(.api.query) = "room_id"];
+  string cursor = 2 [(.api.query) = "cursor"];
+  int32 limit = 3 [(.api.query) = "limit"];
+}
+
+message ListChatRoomMembersResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+  ChatRoomMemberList data = 2 [(.api.body) = "data"];
+}
+
+message InviteChatRoomMembersRequest {
+  string room_id = 1 [(.api.body) = "room_id"];
+  repeated string member_user_ids = 2 [(.api.body) = "member_user_ids"];
+}
+
+message InviteChatRoomMembersResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+message LeaveChatRoomRequest {
+  string room_id = 1 [(.api.body) = "room_id"];
+}
+
+message LeaveChatRoomResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+message MarkChatRoomReadRequest {
+  string room_id = 1 [(.api.body) = "room_id"];
+  string last_read_message_id = 2 [(.api.body) = "last_read_message_id"];
+}
+
+message MarkChatRoomReadResponse {
+  BaseResponse base = 1 [(.api.body) = "base"];
+}
+
+// ---------- Handler 定义 ----------
+
+service ChatHandler {
+  rpc CreateChatRoom(CreateChatRoomRequest) returns (CreateChatRoomResponse) {
+    option (.api.post) = "/api/v1/chat/rooms";
+  }
+  rpc ListChatRooms(ListChatRoomsRequest) returns (ListChatRoomsResponse) {
+    option (.api.get) = "/api/v1/chat/rooms";
+  }
+  rpc ListChatMessages(ListChatMessagesRequest) returns (ListChatMessagesResponse) {
+    option (.api.get) = "/api/v1/chat/messages";
+  }
+  rpc ListChatRoomMembers(ListChatRoomMembersRequest) returns (ListChatRoomMembersResponse) {
+    option (.api.get) = "/api/v1/chat/rooms/members";
+  }
+  rpc InviteChatRoomMembers(InviteChatRoomMembersRequest) returns (InviteChatRoomMembersResponse) {
+    option (.api.post) = "/api/v1/chat/rooms/members/invite";
+  }
+  rpc LeaveChatRoom(LeaveChatRoomRequest) returns (LeaveChatRoomResponse) {
+    option (.api.post) = "/api/v1/chat/rooms/leave";
+  }
+  rpc MarkChatRoomRead(MarkChatRoomReadRequest) returns (MarkChatRoomReadResponse) {
+    option (.api.post) = "/api/v1/chat/rooms/read";
+  }
+}

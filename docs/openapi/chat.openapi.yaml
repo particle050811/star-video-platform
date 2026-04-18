@@ -1,0 +1,337 @@
+# Generated with protoc-gen-http-swagger
+# https://github.com/hertz-contrib/swagger-generate/blob/main/protoc-gen-http-swagger
+
+openapi: 3.0.3
+info:
+    title: ChatHandler API
+    version: 3.0.3
+paths:
+    /api/v1/chat/messages:
+        get:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_ListChatMessages
+            parameters:
+                - name: room_id
+                  in: query
+                  schema:
+                    type: string
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListChatMessagesResponseBody'
+    /api/v1/chat/rooms:
+        get:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_ListChatRooms
+            parameters:
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListChatRoomsResponseBody'
+        post:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_CreateChatRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateChatRoomRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateChatRoomResponseBody'
+    /api/v1/chat/rooms/leave:
+        post:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_LeaveChatRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LeaveChatRoomRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LeaveChatRoomResponseBody'
+    /api/v1/chat/rooms/members:
+        get:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_ListChatRoomMembers
+            parameters:
+                - name: room_id
+                  in: query
+                  schema:
+                    type: string
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListChatRoomMembersResponseBody'
+    /api/v1/chat/rooms/members/invite:
+        post:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_InviteChatRoomMembers
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/InviteChatRoomMembersRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InviteChatRoomMembersResponseBody'
+    /api/v1/chat/rooms/read:
+        post:
+            tags:
+                - ChatHandler
+            operationId: ChatHandler_MarkChatRoomRead
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MarkChatRoomReadRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MarkChatRoomReadResponseBody'
+components:
+    schemas:
+        BaseResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                msg:
+                    type: string
+            description: BaseResponse 表示所有接口共享的返回状态（作业给的接口示例，但是一般不这么写）
+        ChatMessage:
+            type: object
+            properties:
+                id:
+                    type: string
+                roomId:
+                    type: string
+                senderId:
+                    type: string
+                senderUsername:
+                    type: string
+                senderAvatarUrl:
+                    type: string
+                messageType:
+                    type: integer
+                    format: enum
+                content:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                clientMsgId:
+                    type: string
+                createdAt:
+                    type: string
+            description: ChatMessage 表示房间内的一条消息。
+        ChatMessageList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ChatMessage'
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+        ChatRoom:
+            type: object
+            properties:
+                id:
+                    type: string
+                type:
+                    type: integer
+                    format: enum
+                name:
+                    type: string
+                ownerId:
+                    type: string
+                lastMessage:
+                    $ref: '#/components/schemas/ChatMessage'
+                lastMessageAt:
+                    type: string
+                unreadCount:
+                    type: string
+                memberCount:
+                    type: string
+                createdAt:
+                    type: string
+            description: ChatRoom 表示私聊或群聊房间。
+        ChatRoomList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ChatRoom'
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+        ChatRoomMember:
+            type: object
+            properties:
+                roomId:
+                    type: string
+                userId:
+                    type: string
+                username:
+                    type: string
+                avatarUrl:
+                    type: string
+                role:
+                    type: integer
+                    format: enum
+                joinedAt:
+                    type: string
+            description: ChatRoomMember 表示用户与房间的成员关系。
+        ChatRoomMemberList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ChatRoomMember'
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+        CreateChatRoomRequestBody:
+            type: object
+            properties:
+                type:
+                    type: integer
+                    format: enum
+                name:
+                    type: string
+                member_user_ids:
+                    type: array
+                    items:
+                        type: string
+        CreateChatRoomResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/ChatRoom'
+        InviteChatRoomMembersRequestBody:
+            type: object
+            properties:
+                room_id:
+                    type: string
+                member_user_ids:
+                    type: array
+                    items:
+                        type: string
+        InviteChatRoomMembersResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        LeaveChatRoomRequestBody:
+            type: object
+            properties:
+                room_id:
+                    type: string
+        LeaveChatRoomResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        ListChatMessagesResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/ChatMessageList'
+        ListChatRoomMembersResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/ChatRoomMemberList'
+        ListChatRoomsResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/ChatRoomList'
+        MarkChatRoomReadRequestBody:
+            type: object
+            properties:
+                room_id:
+                    type: string
+                last_read_message_id:
+                    type: string
+        MarkChatRoomReadResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+tags:
+    - name: ChatHandler
