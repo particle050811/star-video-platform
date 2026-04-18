@@ -63,28 +63,28 @@ func TestResponseHelpers(t *testing.T) {
 		wantCode int32
 	}{
 		{
-			name: "param error",
-			resp: func() int32 { return ParamError().Code },
+			name:     "param error",
+			resp:     func() int32 { return ParamError().Code },
 			wantCode: CodeParamError,
 		},
 		{
-			name: "unauthorized",
-			resp: func() int32 { return Unauthorized().Code },
+			name:     "unauthorized",
+			resp:     func() int32 { return Unauthorized().Code },
 			wantCode: CodeUnauthorized,
 		},
 		{
-			name: "forbidden",
-			resp: func() int32 { return Forbidden().Code },
+			name:     "forbidden",
+			resp:     func() int32 { return Forbidden().Code },
 			wantCode: CodeForbidden,
 		},
 		{
-			name: "not found",
-			resp: func() int32 { return NotFound().Code },
+			name:     "not found",
+			resp:     func() int32 { return NotFound().Code },
 			wantCode: CodeNotFound,
 		},
 		{
-			name: "internal error",
-			resp: func() int32 { return InternalError().Code },
+			name:     "internal error",
+			resp:     func() int32 { return InternalError().Code },
 			wantCode: CodeInternalError,
 		},
 	}
