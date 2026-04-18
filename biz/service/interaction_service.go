@@ -197,7 +197,6 @@ func buildUserCommentList(result *repository.UserCommentListResult) *interaction
 			Content:   item.Content,
 			LikeCount: item.LikeCount,
 			CreatedAt: item.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: item.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 

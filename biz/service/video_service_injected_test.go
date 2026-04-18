@@ -273,7 +273,7 @@ func TestVideoServiceListPublishedVideosUsesCursor(t *testing.T) {
 					t.Fatalf("expected limit %d, got %d", 20, limit)
 				}
 				return &repository.VideoListResult{
-					Items:      []model.Video{{ID: 1, UserID: 7, Title: "video", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
+					Items:      []model.Video{{ID: 1, UserID: 7, Title: "video", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
 					NextCursor: 1,
 					HasMore:    true,
 				}, nil
@@ -313,7 +313,7 @@ func TestVideoServiceSearchVideosUsesUsernameFilter(t *testing.T) {
 					t.Fatalf("unexpected cursor pagination cursor=%d limit=%d", cursor, limit)
 				}
 				return &repository.VideoListResult{
-					Items: []model.Video{{ID: 9, UserID: 3, Title: "result", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
+					Items: []model.Video{{ID: 9, UserID: 3, Title: "result", CreatedAt: time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)}},
 				}, nil
 			},
 		},
@@ -355,7 +355,6 @@ func TestVideoServiceGetHotVideosBuildsTokenCursorResponse(t *testing.T) {
 						LikeCount:  100,
 						VisitCount: 200,
 						CreatedAt:  time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC),
-						UpdatedAt:  time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC),
 					}},
 					NextCursorToken: wantToken,
 					HasMore:         true,

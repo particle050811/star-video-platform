@@ -19,8 +19,6 @@ message Video {
   int64 like_count = 8;
   int64 comment_count = 9;
   string created_at = 10;
-  string updated_at = 11;
-  string deleted_at = 12;
 }
 
 // VideoList 同时返回视频和总数

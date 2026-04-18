@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 	"video-platform/biz/dal/model"
 	interaction "video-platform/biz/model/interaction"
 	"video-platform/biz/repository"
@@ -232,5 +233,42 @@ func TestBuildUserCommentListHandlesNilResult(t *testing.T) {
 	}
 	if len(got.Items) != 0 {
 		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}
+
+func TestBuildUserCommentListBuildsItems(t *testing.T) {
+	createdAt := time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC)
+
+	got := buildUserCommentList(&repository.UserCommentListResult{
+		Items: []repository.UserCommentItem{{
+			ID:        9,
+			UserID:    5,
+			VideoID:   7,
+			Content:   "hello",
+			LikeCount: 3,
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt.Add(time.Hour),
+		}},
+		Total:      1,
+		NextCursor: 9,
+		HasMore:    true,
+	})
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if len(got.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(got.Items))
+	}
+	if got.Items[0].Id != "9" || got.Items[0].UserId != "5" || got.Items[0].VideoId != "7" {
+		t.Fatalf("unexpected first item ids: %+v", got.Items[0])
+	}
+	if got.Items[0].Content != "hello" || got.Items[0].LikeCount != 3 {
+		t.Fatalf("unexpected first item payload: %+v", got.Items[0])
+	}
+	if got.Items[0].CreatedAt != createdAt.Format(time.RFC3339) {
+		t.Fatalf("expected created at %q, got %q", createdAt.Format(time.RFC3339), got.Items[0].CreatedAt)
+	}
+	if got.Total != 1 || got.NextCursor != "9" || !got.HasMore {
+		t.Fatalf("unexpected list payload: %+v", got)
 	}
 }

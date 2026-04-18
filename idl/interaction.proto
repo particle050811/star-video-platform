@@ -16,7 +16,6 @@ message UserComment {
   string content = 4;
   int64 like_count = 5;
   string created_at = 6;
-  string updated_at = 7;
 }
 
 // UserCommentList 用于返回用户评论分页结果

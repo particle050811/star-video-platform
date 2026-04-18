@@ -5,14 +5,10 @@ import (
 	"time"
 	"video-platform/biz/dal/model"
 	"video-platform/biz/repository"
-
-	"gorm.io/gorm"
 )
 
 func TestBuildVideo(t *testing.T) {
 	createdAt := time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC)
-	updatedAt := time.Date(2026, 4, 18, 13, 14, 15, 0, time.UTC)
-	deletedAt := time.Date(2026, 4, 19, 16, 17, 18, 0, time.UTC)
 
 	video := model.Video{
 		ID:           1,
@@ -25,11 +21,6 @@ func TestBuildVideo(t *testing.T) {
 		LikeCount:    40,
 		CommentCount: 50,
 		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-		DeletedAt: gorm.DeletedAt{
-			Time:  deletedAt,
-			Valid: true,
-		},
 	}
 
 	got := buildVideo(video)
@@ -63,26 +54,6 @@ func TestBuildVideo(t *testing.T) {
 	if got.CreatedAt != createdAt.Format(time.RFC3339) {
 		t.Fatalf("expected created at %q, got %q", createdAt.Format(time.RFC3339), got.CreatedAt)
 	}
-	if got.UpdatedAt != updatedAt.Format(time.RFC3339) {
-		t.Fatalf("expected updated at %q, got %q", updatedAt.Format(time.RFC3339), got.UpdatedAt)
-	}
-	if got.DeletedAt != deletedAt.Format(time.RFC3339) {
-		t.Fatalf("expected deleted at %q, got %q", deletedAt.Format(time.RFC3339), got.DeletedAt)
-	}
-}
-
-func TestBuildVideoWithoutDeletedAt(t *testing.T) {
-	video := model.Video{
-		ID:        7,
-		UserID:    8,
-		CreatedAt: time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC),
-		UpdatedAt: time.Date(2026, 4, 18, 13, 14, 15, 0, time.UTC),
-	}
-
-	got := buildVideo(video)
-	if got.DeletedAt != "" {
-		t.Fatalf("expected deleted at to be empty, got %q", got.DeletedAt)
-	}
 }
 
 func TestBuildVideoList(t *testing.T) {
@@ -92,14 +63,12 @@ func TestBuildVideoList(t *testing.T) {
 			UserID:    11,
 			Title:     "first",
 			CreatedAt: time.Date(2026, 4, 17, 10, 11, 12, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 4, 18, 13, 14, 15, 0, time.UTC),
 		},
 		{
 			ID:        2,
 			UserID:    22,
 			Title:     "second",
 			CreatedAt: time.Date(2026, 4, 19, 10, 11, 12, 0, time.UTC),
-			UpdatedAt: time.Date(2026, 4, 20, 13, 14, 15, 0, time.UTC),
 		},
 	}
 

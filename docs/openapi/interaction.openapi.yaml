@@ -171,8 +171,6 @@ components:
                     type: string
                 createdAt:
                     type: string
-                updatedAt:
-                    type: string
             description: UserComment 表示用户评论记录
         UserCommentList:
             type: object
@@ -210,10 +208,6 @@ components:
                 commentCount:
                     type: string
                 createdAt:
-                    type: string
-                updatedAt:
-                    type: string
-                deletedAt:
                     type: string
             description: Video 为视频数据实体
         VideoLikeActionRequestBody:

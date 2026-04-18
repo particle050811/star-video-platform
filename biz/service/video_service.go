@@ -318,7 +318,7 @@ func buildHotVideoList(result *repository.VideoListResult) *v1.VideoList {
 }
 
 func buildVideo(video model.Video) *v1.Video {
-	result := &v1.Video{
+	return &v1.Video{
 		Id:           strconv.FormatUint(uint64(video.ID), 10),
 		UserId:       strconv.FormatUint(uint64(video.UserID), 10),
 		VideoUrl:     video.VideoURL,
@@ -329,12 +329,5 @@ func buildVideo(video model.Video) *v1.Video {
 		LikeCount:    video.LikeCount,
 		CommentCount: video.CommentCount,
 		CreatedAt:    video.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:    video.UpdatedAt.Format(time.RFC3339),
 	}
-
-	if video.DeletedAt.Valid {
-		result.DeletedAt = video.DeletedAt.Time.Format(time.RFC3339)
-	}
-
-	return result
 }
