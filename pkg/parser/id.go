@@ -39,6 +39,32 @@ func VideoID(rawVideoID string) (uint, error) {
 	return uint(parsedVideoID), nil
 }
 
+func ChatRoomID(rawRoomID string) (uint, error) {
+	if rawRoomID == "" {
+		return 0, errors.New("room_id 不能为空")
+	}
+
+	parsedRoomID, err := strconv.ParseUint(rawRoomID, 10, 64)
+	if err != nil || parsedRoomID == 0 {
+		return 0, errors.New("room_id 格式错误")
+	}
+
+	return uint(parsedRoomID), nil
+}
+
+func ChatMessageID(rawMessageID string) (uint, error) {
+	if rawMessageID == "" {
+		return 0, errors.New("message_id 不能为空")
+	}
+
+	parsedMessageID, err := strconv.ParseUint(rawMessageID, 10, 64)
+	if err != nil || parsedMessageID == 0 {
+		return 0, errors.New("message_id 格式错误")
+	}
+
+	return uint(parsedMessageID), nil
+}
+
 func Cursor(rawCursor string) (uint, error) {
 	if rawCursor == "" {
 		return 0, nil

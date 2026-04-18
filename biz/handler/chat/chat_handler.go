@@ -4,39 +4,59 @@ package chat
 
 import (
 	"context"
+	"errors"
+	"log"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	chat "video-platform/biz/model/chat"
+	"video-platform/biz/service"
+	"video-platform/pkg/middleware"
+	"video-platform/pkg/parser"
 	"video-platform/pkg/response"
 )
-
-const chatHTTPNotImplementedMsg = "聊天 HTTP 接口暂未实现"
 
 // CreateChatRoom .
 // @router /api/v1/chat/rooms [POST]
 func CreateChatRoom(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.CreateChatRoomRequest
-	err = c.BindAndValidate(&req)
-	if err != nil {
+	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.CreateChatRoomResponse{
 			Base: response.ParamError(err.Error()),
 		})
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.CreateChatRoomResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	data, err := service.Chat.CreateRoom(ctx, userID, &req)
+	if err != nil {
+		writeCreateChatRoomError(c, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.CreateChatRoomResponse{
+		Base: response.Success("创建聊天房间成功"),
+		Data: data,
 	})
 }
 
 // ListChatRooms .
 // @router /api/v1/chat/rooms [GET]
 func ListChatRooms(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.ListChatRoomsRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.ListChatRoomsResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	cursor, err := parser.Cursor(req.Cursor)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.ListChatRoomsResponse{
 			Base: response.ParamError(err.Error()),
@@ -44,17 +64,43 @@ func ListChatRooms(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.ListChatRoomsResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	data, err := service.Chat.ListRooms(ctx, userID, cursor, req.Limit)
+	if err != nil {
+		log.Printf("[聊天模块][房间列表] 查询失败 user_id=%d: %v", userID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.ListChatRoomsResponse{
+			Base: response.InternalError(),
+		})
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.ListChatRoomsResponse{
+		Base: response.Success("获取聊天房间列表成功"),
+		Data: data,
 	})
 }
 
 // ListChatMessages .
 // @router /api/v1/chat/messages [GET]
 func ListChatMessages(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.ListChatMessagesRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.ListChatMessagesResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	roomID, err := parser.ChatRoomID(req.RoomId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.ListChatMessagesResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+	cursor, err := parser.Cursor(req.Cursor)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.ListChatMessagesResponse{
 			Base: response.ParamError(err.Error()),
@@ -62,17 +108,40 @@ func ListChatMessages(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.ListChatMessagesResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	data, err := service.Chat.ListMessages(ctx, userID, roomID, cursor, req.Limit)
+	if err != nil {
+		writeListChatMessagesError(c, userID, roomID, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.ListChatMessagesResponse{
+		Base: response.Success("获取聊天消息列表成功"),
+		Data: data,
 	})
 }
 
 // ListChatRoomMembers .
 // @router /api/v1/chat/rooms/members [GET]
 func ListChatRoomMembers(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.ListChatRoomMembersRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.ListChatRoomMembersResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	roomID, err := parser.ChatRoomID(req.RoomId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.ListChatRoomMembersResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+	cursor, err := parser.Cursor(req.Cursor)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.ListChatRoomMembersResponse{
 			Base: response.ParamError(err.Error()),
@@ -80,17 +149,33 @@ func ListChatRoomMembers(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.ListChatRoomMembersResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	data, err := service.Chat.ListMembers(ctx, userID, roomID, cursor, req.Limit)
+	if err != nil {
+		writeListChatRoomMembersError(c, userID, roomID, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.ListChatRoomMembersResponse{
+		Base: response.Success("获取聊天房间成员成功"),
+		Data: data,
 	})
 }
 
 // InviteChatRoomMembers .
 // @router /api/v1/chat/rooms/members/invite [POST]
 func InviteChatRoomMembers(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.InviteChatRoomMembersRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.InviteChatRoomMembersResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	roomID, err := parser.ChatRoomID(req.RoomId)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.InviteChatRoomMembersResponse{
 			Base: response.ParamError(err.Error()),
@@ -98,17 +183,32 @@ func InviteChatRoomMembers(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.InviteChatRoomMembersResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	err = service.Chat.InviteMembers(ctx, userID, roomID, req.MemberUserIds)
+	if err != nil {
+		writeInviteChatRoomMembersError(c, userID, roomID, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.InviteChatRoomMembersResponse{
+		Base: response.Success("邀请聊天房间成员成功"),
 	})
 }
 
 // LeaveChatRoom .
 // @router /api/v1/chat/rooms/leave [POST]
 func LeaveChatRoom(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.LeaveChatRoomRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.LeaveChatRoomResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	roomID, err := parser.ChatRoomID(req.RoomId)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.LeaveChatRoomResponse{
 			Base: response.ParamError(err.Error()),
@@ -116,17 +216,39 @@ func LeaveChatRoom(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.LeaveChatRoomResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	err = service.Chat.LeaveRoom(ctx, userID, roomID)
+	if err != nil {
+		writeLeaveChatRoomError(c, userID, roomID, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.LeaveChatRoomResponse{
+		Base: response.Success("退出聊天房间成功"),
 	})
 }
 
 // MarkChatRoomRead .
 // @router /api/v1/chat/rooms/read [POST]
 func MarkChatRoomRead(ctx context.Context, c *app.RequestContext) {
-	var err error
 	var req chat.MarkChatRoomReadRequest
-	err = c.BindAndValidate(&req)
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.MarkChatRoomReadResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+
+	userIDValue, _ := c.Get(middleware.ContextUserID)
+	userID := userIDValue.(uint)
+
+	roomID, err := parser.ChatRoomID(req.RoomId)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, &chat.MarkChatRoomReadResponse{
+			Base: response.ParamError(err.Error()),
+		})
+		return
+	}
+	messageID, err := parser.ChatMessageID(req.LastReadMessageId)
 	if err != nil {
 		c.JSON(consts.StatusBadRequest, &chat.MarkChatRoomReadResponse{
 			Base: response.ParamError(err.Error()),
@@ -134,7 +256,99 @@ func MarkChatRoomRead(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	c.JSON(consts.StatusNotImplemented, &chat.MarkChatRoomReadResponse{
-		Base: response.Error(response.CodeInternalError, chatHTTPNotImplementedMsg),
+	err = service.Chat.MarkRoomRead(ctx, userID, roomID, messageID)
+	if err != nil {
+		writeMarkChatRoomReadError(c, userID, roomID, err)
+		return
+	}
+
+	c.JSON(consts.StatusOK, &chat.MarkChatRoomReadResponse{
+		Base: response.Success("标记聊天房间已读成功"),
 	})
+}
+
+func writeCreateChatRoomError(c *app.RequestContext, err error) {
+	switch {
+	case errors.Is(err, service.ErrUserNotFound):
+		c.JSON(consts.StatusNotFound, &chat.CreateChatRoomResponse{Base: response.Error(response.CodeUserNotFound)})
+	case errors.Is(err, service.ErrChatMemberRequired):
+		c.JSON(consts.StatusBadRequest, &chat.CreateChatRoomResponse{Base: response.Error(response.CodeChatMemberRequired)})
+	case errors.Is(err, service.ErrChatPrivateMemberCount):
+		c.JSON(consts.StatusBadRequest, &chat.CreateChatRoomResponse{Base: response.Error(response.CodeChatPrivateMemberCount)})
+	case errors.Is(err, service.ErrChatGroupNameRequired):
+		c.JSON(consts.StatusBadRequest, &chat.CreateChatRoomResponse{Base: response.Error(response.CodeChatGroupNameRequired)})
+	default:
+		log.Printf("[聊天模块][创建房间] 创建失败: %v", err)
+		c.JSON(consts.StatusInternalServerError, &chat.CreateChatRoomResponse{Base: response.InternalError()})
+	}
+}
+
+func writeListChatMessagesError(c *app.RequestContext, userID, roomID uint, err error) {
+	switch {
+	case errors.Is(err, service.ErrChatRoomNotFound):
+		c.JSON(consts.StatusNotFound, &chat.ListChatMessagesResponse{Base: response.Error(response.CodeChatRoomNotFound)})
+	case errors.Is(err, service.ErrChatRoomMemberNotFound):
+		c.JSON(consts.StatusForbidden, &chat.ListChatMessagesResponse{Base: response.Error(response.CodeChatRoomMemberNotFound)})
+	default:
+		log.Printf("[聊天模块][消息列表] 查询失败 user_id=%d room_id=%d: %v", userID, roomID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.ListChatMessagesResponse{Base: response.InternalError()})
+	}
+}
+
+func writeListChatRoomMembersError(c *app.RequestContext, userID, roomID uint, err error) {
+	switch {
+	case errors.Is(err, service.ErrChatRoomNotFound):
+		c.JSON(consts.StatusNotFound, &chat.ListChatRoomMembersResponse{Base: response.Error(response.CodeChatRoomNotFound)})
+	case errors.Is(err, service.ErrChatRoomMemberNotFound):
+		c.JSON(consts.StatusForbidden, &chat.ListChatRoomMembersResponse{Base: response.Error(response.CodeChatRoomMemberNotFound)})
+	default:
+		log.Printf("[聊天模块][成员列表] 查询失败 user_id=%d room_id=%d: %v", userID, roomID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.ListChatRoomMembersResponse{Base: response.InternalError()})
+	}
+}
+
+func writeInviteChatRoomMembersError(c *app.RequestContext, userID, roomID uint, err error) {
+	switch {
+	case errors.Is(err, service.ErrUserNotFound):
+		c.JSON(consts.StatusNotFound, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeUserNotFound)})
+	case errors.Is(err, service.ErrChatRoomNotFound):
+		c.JSON(consts.StatusNotFound, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeChatRoomNotFound)})
+	case errors.Is(err, service.ErrChatRoomMemberNotFound):
+		c.JSON(consts.StatusForbidden, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeChatRoomMemberNotFound)})
+	case errors.Is(err, service.ErrChatMemberExists):
+		c.JSON(consts.StatusConflict, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeChatMemberExists)})
+	case errors.Is(err, service.ErrChatMemberRequired):
+		c.JSON(consts.StatusBadRequest, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeChatMemberRequired)})
+	case errors.Is(err, service.ErrNoPermission):
+		c.JSON(consts.StatusForbidden, &chat.InviteChatRoomMembersResponse{Base: response.Error(response.CodeNoPermission)})
+	default:
+		log.Printf("[聊天模块][邀请成员] 操作失败 user_id=%d room_id=%d: %v", userID, roomID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.InviteChatRoomMembersResponse{Base: response.InternalError()})
+	}
+}
+
+func writeLeaveChatRoomError(c *app.RequestContext, userID, roomID uint, err error) {
+	switch {
+	case errors.Is(err, service.ErrChatRoomMemberNotFound):
+		c.JSON(consts.StatusForbidden, &chat.LeaveChatRoomResponse{Base: response.Error(response.CodeChatRoomMemberNotFound)})
+	case errors.Is(err, service.ErrChatOwnerCannotLeave):
+		c.JSON(consts.StatusBadRequest, &chat.LeaveChatRoomResponse{Base: response.Error(response.CodeChatOwnerCannotLeave)})
+	default:
+		log.Printf("[聊天模块][退出房间] 操作失败 user_id=%d room_id=%d: %v", userID, roomID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.LeaveChatRoomResponse{Base: response.InternalError()})
+	}
+}
+
+func writeMarkChatRoomReadError(c *app.RequestContext, userID, roomID uint, err error) {
+	switch {
+	case errors.Is(err, service.ErrChatRoomNotFound):
+		c.JSON(consts.StatusNotFound, &chat.MarkChatRoomReadResponse{Base: response.Error(response.CodeChatRoomNotFound)})
+	case errors.Is(err, service.ErrChatRoomMemberNotFound):
+		c.JSON(consts.StatusForbidden, &chat.MarkChatRoomReadResponse{Base: response.Error(response.CodeChatRoomMemberNotFound)})
+	case errors.Is(err, service.ErrChatMessageNotFound):
+		c.JSON(consts.StatusNotFound, &chat.MarkChatRoomReadResponse{Base: response.Error(response.CodeChatMessageNotFound)})
+	default:
+		log.Printf("[聊天模块][标记已读] 操作失败 user_id=%d room_id=%d: %v", userID, roomID, err)
+		c.JSON(consts.StatusInternalServerError, &chat.MarkChatRoomReadResponse{Base: response.InternalError()})
+	}
 }

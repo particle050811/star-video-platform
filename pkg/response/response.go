@@ -6,62 +6,78 @@ import (
 
 // 业务错误码定义
 const (
-	CodeSuccess               = 200
-	CodeParamError            = 400
-	CodeUnauthorized          = 401
-	CodeForbidden             = 403
-	CodeNotFound              = 404
-	CodeUserExists            = 1001
-	CodeUserNotFound          = 1002
-	CodePasswordWrong         = 1003
-	CodeTokenExpired          = 1004
-	CodeTokenInvalid          = 1005
-	CodeUnsupportedAvatarType = 1006
-	CodeCannotFollowSelf      = 1007
-	CodeFollowNotFound        = 1008
-	CodeAlreadyFollowed       = 1009
-	CodeVideoNotFound         = 1010
-	CodeVideoTitleRequired    = 1011
-	CodeVideoFileRequired     = 1012
-	CodeUnsupportedVideoType  = 1013
-	CodeUnsupportedCoverType  = 1014
-	CodeCommentNotFound       = 1015
-	CodeNoPermission          = 1016
-	CodeCommentTooLong        = 1017
-	CodeCommentEmpty          = 1018
-	CodeAlreadyLiked          = 1019
-	CodeLikeNotFound          = 1020
-	CodeInternalError         = 500
+	CodeSuccess                = 200
+	CodeParamError             = 400
+	CodeUnauthorized           = 401
+	CodeForbidden              = 403
+	CodeNotFound               = 404
+	CodeUserExists             = 1001
+	CodeUserNotFound           = 1002
+	CodePasswordWrong          = 1003
+	CodeTokenExpired           = 1004
+	CodeTokenInvalid           = 1005
+	CodeUnsupportedAvatarType  = 1006
+	CodeCannotFollowSelf       = 1007
+	CodeFollowNotFound         = 1008
+	CodeAlreadyFollowed        = 1009
+	CodeVideoNotFound          = 1010
+	CodeVideoTitleRequired     = 1011
+	CodeVideoFileRequired      = 1012
+	CodeUnsupportedVideoType   = 1013
+	CodeUnsupportedCoverType   = 1014
+	CodeCommentNotFound        = 1015
+	CodeNoPermission           = 1016
+	CodeCommentTooLong         = 1017
+	CodeCommentEmpty           = 1018
+	CodeAlreadyLiked           = 1019
+	CodeLikeNotFound           = 1020
+	CodeChatRoomNotFound       = 1021
+	CodeChatRoomMemberNotFound = 1022
+	CodeChatMemberExists       = 1023
+	CodeChatMemberRequired     = 1024
+	CodeChatPrivateMemberCount = 1025
+	CodeChatGroupNameRequired  = 1026
+	CodeChatOwnerCannotLeave   = 1027
+	CodeChatMessageNotFound    = 1028
+	CodeInternalError          = 500
 )
 
 // 错误信息映射
 var codeMsg = map[int32]string{
-	CodeSuccess:               "成功",
-	CodeParamError:            "参数错误",
-	CodeUnauthorized:          "未授权",
-	CodeForbidden:             "禁止访问",
-	CodeNotFound:              "资源不存在",
-	CodeUserExists:            "用户名已存在",
-	CodeUserNotFound:          "用户不存在",
-	CodePasswordWrong:         "密码错误",
-	CodeTokenExpired:          "令牌已过期",
-	CodeTokenInvalid:          "令牌无效",
-	CodeUnsupportedAvatarType: "不支持的头像文件类型",
-	CodeCannotFollowSelf:      "不能关注自己",
-	CodeFollowNotFound:        "关注关系不存在",
-	CodeAlreadyFollowed:       "已经关注该用户",
-	CodeVideoNotFound:         "视频不存在",
-	CodeVideoTitleRequired:    "视频标题不能为空",
-	CodeVideoFileRequired:     "视频文件不能为空",
-	CodeUnsupportedVideoType:  "不支持的视频文件类型",
-	CodeUnsupportedCoverType:  "不支持的视频封面文件类型",
-	CodeCommentNotFound:       "评论不存在",
-	CodeNoPermission:          "无权限操作",
-	CodeCommentTooLong:        "评论内容过长",
-	CodeCommentEmpty:          "评论内容不能为空",
-	CodeAlreadyLiked:          "已经点赞该视频",
-	CodeLikeNotFound:          "点赞记录不存在",
-	CodeInternalError:         "服务器内部错误",
+	CodeSuccess:                "成功",
+	CodeParamError:             "参数错误",
+	CodeUnauthorized:           "未授权",
+	CodeForbidden:              "禁止访问",
+	CodeNotFound:               "资源不存在",
+	CodeUserExists:             "用户名已存在",
+	CodeUserNotFound:           "用户不存在",
+	CodePasswordWrong:          "密码错误",
+	CodeTokenExpired:           "令牌已过期",
+	CodeTokenInvalid:           "令牌无效",
+	CodeUnsupportedAvatarType:  "不支持的头像文件类型",
+	CodeCannotFollowSelf:       "不能关注自己",
+	CodeFollowNotFound:         "关注关系不存在",
+	CodeAlreadyFollowed:        "已经关注该用户",
+	CodeVideoNotFound:          "视频不存在",
+	CodeVideoTitleRequired:     "视频标题不能为空",
+	CodeVideoFileRequired:      "视频文件不能为空",
+	CodeUnsupportedVideoType:   "不支持的视频文件类型",
+	CodeUnsupportedCoverType:   "不支持的视频封面文件类型",
+	CodeCommentNotFound:        "评论不存在",
+	CodeNoPermission:           "无权限操作",
+	CodeCommentTooLong:         "评论内容过长",
+	CodeCommentEmpty:           "评论内容不能为空",
+	CodeAlreadyLiked:           "已经点赞该视频",
+	CodeLikeNotFound:           "点赞记录不存在",
+	CodeChatRoomNotFound:       "聊天房间不存在",
+	CodeChatRoomMemberNotFound: "不是聊天房间成员",
+	CodeChatMemberExists:       "用户已在聊天房间中",
+	CodeChatMemberRequired:     "聊天房间成员不能为空",
+	CodeChatPrivateMemberCount: "私聊房间只能包含两个成员",
+	CodeChatGroupNameRequired:  "群聊名称不能为空",
+	CodeChatOwnerCannotLeave:   "群主不能直接退出群聊",
+	CodeChatMessageNotFound:    "聊天消息不存在",
+	CodeInternalError:          "服务器内部错误",
 }
 
 // Success 创建成功响应
