@@ -23,8 +23,8 @@
 - 项目通过 `protoc-gen-http-swagger` 基于 proto 生成 OpenAPI 文档
 - 当前按模块分别生成 `user.openapi.yaml`、`video.openapi.yaml`、`interaction.openapi.yaml`、`relation.openapi.yaml`
 - 生成目录为 `docs/openapi/`
-- 服务启动后可通过 `/openapi` 或 `/openapi/` 访问文档入口
-- 原始文档访问路径为 `/openapi/openapi/user.openapi.yaml`、`/openapi/openapi/video.openapi.yaml`、`/openapi/openapi/interaction.openapi.yaml`、`/openapi/openapi/relation.openapi.yaml`
+- 文档统一使用 Apifox 导入和调试，不使用 Swagger 页面
+- 原始文档路径为 `/openapi/openapi/user.openapi.yaml`、`/openapi/openapi/video.openapi.yaml`、`/openapi/openapi/interaction.openapi.yaml`、`/openapi/openapi/relation.openapi.yaml`
 - 首次使用前需确保本机已安装插件：
   ```bash
   go install github.com/hertz-contrib/swagger-generate/protoc-gen-http-swagger@latest
@@ -97,6 +97,7 @@
 - 标题简洁明确，直接说明本次改动
 - 每次提交前必须调用至少一个 subagent 对本次准备提交的暂存区改动做 review
 - 这里的 subagent 指当前 Codex 工作流中用于审查改动的代理；人工自查不能替代这一步
+- 调用 subagent 时必须显式指定使用 `gpt-5.4`，旧模型已下架，不要使用其他旧模型
 - subagent 返回 `no findings` 或明确列出 findings，都视为已完成审核；如果审核流程失败或未返回结果，则不允许执行 `git commit`
 
 常用前缀：
