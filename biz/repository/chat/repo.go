@@ -4,6 +4,7 @@ import (
 	"context"
 	dbdal "video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
+	rdbdal "video-platform/biz/dal/rdb"
 	userrepo "video-platform/biz/repository/user"
 )
 
@@ -25,9 +26,17 @@ type chatSnapshotStore interface {
 	ListUserSnapshotsByIDs(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error)
 }
 
+type chatCacheStore interface {
+	GetChatMessageCacheVersion(ctx context.Context, roomID uint) (int64, error)
+	GetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error)
+	SetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error
+	BumpChatMessageCacheVersion(ctx context.Context, roomID uint) error
+}
+
 type chatStore struct {
 	db        chatDBStore
 	snapshots chatSnapshotStore
+	cache     chatCacheStore
 }
 
 type ChatRoomListResult struct {
@@ -75,6 +84,7 @@ func (defaultChatSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, user
 var chats = chatStore{
 	db:        dbdal.Chats,
 	snapshots: defaultChatSnapshotStore{},
+	cache:     rdbdal.Chats,
 }
 
 func CreateChatRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error {
@@ -114,11 +124,22 @@ func UpdateChatLastReadMessageID(ctx context.Context, roomID, userID, messageID 
 }
 
 func CreateChatMessage(ctx context.Context, message *model.ChatMessage) error {
-	return chats.db.CreateMessage(ctx, message)
+	return chats.CreateMessage(ctx, message)
 }
 
 func (s chatStore) CreateRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error {
 	return s.db.CreateRoom(ctx, room, members)
+}
+
+func (s chatStore) CreateMessage(ctx context.Context, message *model.ChatMessage) error {
+	if err := s.db.CreateMessage(ctx, message); err != nil {
+		return err
+	}
+
+	if s.cache != nil {
+		_ = s.cache.BumpChatMessageCacheVersion(ctx, message.RoomID)
+	}
+	return nil
 }
 
 func (s chatStore) ListRooms(ctx context.Context, userID uint, cursor uint, limit int) (*ChatRoomListResult, error) {
@@ -228,6 +249,23 @@ func (s chatStore) ListMembers(ctx context.Context, roomID uint, cursor uint, li
 }
 
 func (s chatStore) ListMessages(ctx context.Context, roomID uint, cursor uint, limit int) (*ChatMessageListResult, error) {
+	version := int64(0)
+	cacheEnabled := s.cache != nil && cursor > 0
+	var result ChatMessageListResult
+	if cacheEnabled {
+		var err error
+		version, err = s.cache.GetChatMessageCacheVersion(ctx, roomID)
+		if err != nil {
+			cacheEnabled = false
+		}
+	}
+
+	if cacheEnabled {
+		if ok, err := s.cache.GetChatMessageCache(ctx, roomID, version, cursor, limit, &result); err == nil && ok {
+			return &result, nil
+		}
+	}
+
 	messages, err := s.db.ListRoomMessages(ctx, roomID, cursor, limit+1)
 	if err != nil {
 		return nil, err
@@ -261,11 +299,16 @@ func (s chatStore) ListMessages(ctx context.Context, roomID uint, cursor uint, l
 		})
 	}
 
-	return &ChatMessageListResult{
+	result = ChatMessageListResult{
 		Messages:   items,
 		NextCursor: nextCursor,
 		HasMore:    hasMore,
-	}, nil
+	}
+	if cacheEnabled {
+		_ = s.cache.SetChatMessageCache(ctx, roomID, version, cursor, limit, result)
+	}
+
+	return &result, nil
 }
 
 func (s chatStore) userMap(ctx context.Context, userIDs []uint) (map[uint]userrepo.UserProfile, error) {

@@ -75,6 +75,29 @@ func (f fakeChatSnapshotStore) ListUserSnapshotsByIDs(ctx context.Context, userI
 	return f.listUserSnapshotsByIDsFn(ctx, userIDs)
 }
 
+type fakeChatCacheStore struct {
+	getChatMessageCacheVersionFn  func(ctx context.Context, roomID uint) (int64, error)
+	getChatMessageCacheFn         func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error)
+	setChatMessageCacheFn         func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error
+	bumpChatMessageCacheVersionFn func(ctx context.Context, roomID uint) error
+}
+
+func (f fakeChatCacheStore) GetChatMessageCacheVersion(ctx context.Context, roomID uint) (int64, error) {
+	return f.getChatMessageCacheVersionFn(ctx, roomID)
+}
+
+func (f fakeChatCacheStore) GetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
+	return f.getChatMessageCacheFn(ctx, roomID, version, cursor, limit, dest)
+}
+
+func (f fakeChatCacheStore) SetChatMessageCache(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error {
+	return f.setChatMessageCacheFn(ctx, roomID, version, cursor, limit, value)
+}
+
+func (f fakeChatCacheStore) BumpChatMessageCacheVersion(ctx context.Context, roomID uint) error {
+	return f.bumpChatMessageCacheVersionFn(ctx, roomID)
+}
+
 func TestChatStoreListRoomsBuildsRoomItems(t *testing.T) {
 	store := chatStore{
 		db: fakeChatDBStore{
@@ -159,6 +182,8 @@ func TestChatStoreListMembersBuildsMemberItems(t *testing.T) {
 }
 
 func TestChatStoreListMessagesBuildsMessageItems(t *testing.T) {
+	var cachedValue ChatMessageListResult
+
 	store := chatStore{
 		db: fakeChatDBStore{
 			listRoomMessagesFn: func(ctx context.Context, roomID uint, cursor uint, limit int) ([]model.ChatMessage, error) {
@@ -166,6 +191,24 @@ func TestChatStoreListMessagesBuildsMessageItems(t *testing.T) {
 					{ID: 21, RoomID: roomID, SenderID: 1, Content: "hello"},
 					{ID: 20, RoomID: roomID, SenderID: 2, Content: "world"},
 				}, nil
+			},
+		},
+		cache: fakeChatCacheStore{
+			getChatMessageCacheVersionFn: func(ctx context.Context, roomID uint) (int64, error) {
+				return 2, nil
+			},
+			getChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
+				if roomID != 6 || version != 2 || cursor != 30 || limit != 1 {
+					t.Fatalf("unexpected cache params roomID=%d version=%d cursor=%d limit=%d", roomID, version, cursor, limit)
+				}
+				return false, nil
+			},
+			setChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error {
+				if roomID != 6 || version != 2 || cursor != 30 || limit != 1 {
+					t.Fatalf("unexpected cache set params roomID=%d version=%d cursor=%d limit=%d", roomID, version, cursor, limit)
+				}
+				cachedValue = value.(ChatMessageListResult)
+				return nil
 			},
 		},
 		snapshots: fakeChatSnapshotStore{
@@ -178,7 +221,7 @@ func TestChatStoreListMessagesBuildsMessageItems(t *testing.T) {
 		},
 	}
 
-	got, err := store.ListMessages(context.Background(), 6, 0, 1)
+	got, err := store.ListMessages(context.Background(), 6, 30, 1)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -187,6 +230,151 @@ func TestChatStoreListMessagesBuildsMessageItems(t *testing.T) {
 	}
 	if !got.HasMore || got.NextCursor != 21 {
 		t.Fatalf("unexpected pagination: %+v", got)
+	}
+	if len(cachedValue.Messages) != 1 || cachedValue.Messages[0].Message.ID != 21 {
+		t.Fatalf("unexpected cached value: %+v", cachedValue)
+	}
+}
+
+func TestChatStoreListMessagesUsesCache(t *testing.T) {
+	store := chatStore{
+		db: fakeChatDBStore{
+			listRoomMessagesFn: func(ctx context.Context, roomID uint, cursor uint, limit int) ([]model.ChatMessage, error) {
+				t.Fatal("db should not be called on cache hit")
+				return nil, nil
+			},
+		},
+		cache: fakeChatCacheStore{
+			getChatMessageCacheVersionFn: func(ctx context.Context, roomID uint) (int64, error) {
+				return 3, nil
+			},
+			getChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
+				result := dest.(*ChatMessageListResult)
+				result.Messages = []ChatMessageItem{
+					{Message: model.ChatMessage{ID: 31, RoomID: roomID, SenderID: 1, Content: "cached"}},
+				}
+				result.HasMore = false
+				return true, nil
+			},
+		},
+	}
+
+	got, err := store.ListMessages(context.Background(), 6, 30, 20)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(got.Messages) != 1 || got.Messages[0].Message.Content != "cached" {
+		t.Fatalf("unexpected cached messages: %+v", got.Messages)
+	}
+}
+
+func TestChatStoreListLatestMessagesSkipsCache(t *testing.T) {
+	store := chatStore{
+		db: fakeChatDBStore{
+			listRoomMessagesFn: func(ctx context.Context, roomID uint, cursor uint, limit int) ([]model.ChatMessage, error) {
+				if cursor != 0 {
+					t.Fatalf("expected latest cursor 0, got %d", cursor)
+				}
+				return []model.ChatMessage{
+					{ID: 21, RoomID: roomID, SenderID: 1, Content: "latest"},
+				}, nil
+			},
+		},
+		cache: fakeChatCacheStore{
+			getChatMessageCacheVersionFn: func(ctx context.Context, roomID uint) (int64, error) {
+				t.Fatal("latest page should not read cache version")
+				return 0, nil
+			},
+			getChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
+				t.Fatal("latest page should not read cache")
+				return false, nil
+			},
+			setChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error {
+				t.Fatal("latest page should not write cache")
+				return nil
+			},
+		},
+		snapshots: fakeChatSnapshotStore{
+			listUserSnapshotsByIDsFn: func(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error) {
+				return []userrepo.UserProfile{{ID: 1, Username: "alice"}}, nil
+			},
+		},
+	}
+
+	got, err := store.ListMessages(context.Background(), 6, 0, 20)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(got.Messages) != 1 || got.Messages[0].Message.Content != "latest" {
+		t.Fatalf("unexpected messages: %+v", got.Messages)
+	}
+}
+
+func TestChatStoreListMessagesFallsBackToDBOnVersionCacheError(t *testing.T) {
+	wantErr := errors.New("redis unavailable")
+
+	store := chatStore{
+		db: fakeChatDBStore{
+			listRoomMessagesFn: func(ctx context.Context, roomID uint, cursor uint, limit int) ([]model.ChatMessage, error) {
+				return []model.ChatMessage{
+					{ID: 21, RoomID: roomID, SenderID: 1, Content: "db"},
+				}, nil
+			},
+		},
+		cache: fakeChatCacheStore{
+			getChatMessageCacheVersionFn: func(ctx context.Context, roomID uint) (int64, error) {
+				return 0, wantErr
+			},
+			getChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, dest any) (bool, error) {
+				t.Fatal("message cache should not be read when version lookup fails")
+				return false, nil
+			},
+			setChatMessageCacheFn: func(ctx context.Context, roomID uint, version int64, cursor uint, limit int, value any) error {
+				t.Fatal("message cache should not be written when version lookup fails")
+				return nil
+			},
+		},
+		snapshots: fakeChatSnapshotStore{
+			listUserSnapshotsByIDsFn: func(ctx context.Context, userIDs []uint) ([]userrepo.UserProfile, error) {
+				return []userrepo.UserProfile{{ID: 1, Username: "alice"}}, nil
+			},
+		},
+	}
+
+	got, err := store.ListMessages(context.Background(), 6, 30, 20)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(got.Messages) != 1 || got.Messages[0].Message.Content != "db" {
+		t.Fatalf("unexpected messages: %+v", got.Messages)
+	}
+}
+
+func TestChatStoreCreateMessageBumpsMessageCacheVersion(t *testing.T) {
+	var bumpedRoomID uint
+
+	store := chatStore{
+		db: fakeChatDBStore{
+			createMessageFn: func(ctx context.Context, message *model.ChatMessage) error {
+				if message.RoomID != 6 {
+					t.Fatalf("expected roomID 6, got %d", message.RoomID)
+				}
+				return nil
+			},
+		},
+		cache: fakeChatCacheStore{
+			bumpChatMessageCacheVersionFn: func(ctx context.Context, roomID uint) error {
+				bumpedRoomID = roomID
+				return nil
+			},
+		},
+	}
+
+	if err := store.CreateMessage(context.Background(), &model.ChatMessage{RoomID: 6}); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if bumpedRoomID != 6 {
+		t.Fatalf("expected bumped roomID 6, got %d", bumpedRoomID)
 	}
 }
 
