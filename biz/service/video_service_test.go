@@ -127,3 +127,68 @@ func TestBuildVideoList(t *testing.T) {
 		t.Fatalf("unexpected cursor response: %+v", got)
 	}
 }
+
+func TestBuildVideoListReturnsEmptyItems(t *testing.T) {
+	got := buildVideoList(&repository.VideoListResult{})
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}
+
+func TestBuildVideoListHandlesNilResult(t *testing.T) {
+	got := buildVideoList(nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 {
+		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}
+
+func TestBuildHotVideoListHandlesNilResult(t *testing.T) {
+	got := buildHotVideoList(nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}
+
+func TestBuildVideoCommentListReturnsEmptyItems(t *testing.T) {
+	got := buildVideoCommentList(&repository.VideoCommentListResult{}, nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.Total != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}
+
+func TestBuildVideoCommentListHandlesNilResult(t *testing.T) {
+	got := buildVideoCommentList(nil, nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 {
+		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}

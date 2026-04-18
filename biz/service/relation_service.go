@@ -145,7 +145,14 @@ func (s relationService) ListFriends(ctx context.Context, userID uint, cursor ui
 }
 
 func buildSocialList(result *repository.RelationListResult) *relation.SocialListWithTotal {
-	items := make([]*relation.SocialProfile, 0, len(result.Users))
+	items := make([]*relation.SocialProfile, 0)
+	if result == nil {
+		return &relation.SocialListWithTotal{
+			Items: items,
+		}
+	}
+
+	items = make([]*relation.SocialProfile, 0, len(result.Users))
 	for _, user := range result.Users {
 		items = append(items, &relation.SocialProfile{
 			Id:        strconv.FormatUint(uint64(user.ID), 10),

@@ -218,6 +218,10 @@ func (s videoService) ListVideoComments(ctx context.Context, videoID uint, curso
 		return nil, err
 	}
 
+	if result == nil {
+		return buildVideoCommentList(nil, nil), nil
+	}
+
 	commentUserIDs := make([]uint, 0, len(result.Items))
 	for _, item := range result.Items {
 		commentUserIDs = append(commentUserIDs, item.UserID)
@@ -228,12 +232,32 @@ func (s videoService) ListVideoComments(ctx context.Context, videoID uint, curso
 		return nil, err
 	}
 
+	return buildVideoCommentList(result, users), nil
+}
+
+func (s videoService) GetHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int32) (*v1.VideoList, error) {
+	result, err := s.repo.ListHotVideos(ctx, cursor, pagination.NormalizeLimit(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	return buildHotVideoList(result), nil
+}
+
+func buildVideoCommentList(result *repository.VideoCommentListResult, users []repository.UserProfile) *v1.VideoCommentList {
+	items := make([]*v1.VideoComment, 0)
+	if result == nil {
+		return &v1.VideoCommentList{
+			Items: items,
+		}
+	}
+
 	userMap := make(map[uint]repository.UserProfile, len(users))
 	for _, user := range users {
 		userMap[user.ID] = user
 	}
 
-	items := make([]*v1.VideoComment, 0, len(result.Items))
+	items = make([]*v1.VideoComment, 0, len(result.Items))
 	for _, item := range result.Items {
 		user := userMap[item.UserID]
 		items = append(items, &v1.VideoComment{
@@ -257,20 +281,18 @@ func (s videoService) ListVideoComments(ctx context.Context, videoID uint, curso
 		Total:      result.Total,
 		NextCursor: nextCursor,
 		HasMore:    result.HasMore,
-	}, nil
-}
-
-func (s videoService) GetHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int32) (*v1.VideoList, error) {
-	result, err := s.repo.ListHotVideos(ctx, cursor, pagination.NormalizeLimit(limit))
-	if err != nil {
-		return nil, err
 	}
-
-	return buildHotVideoList(result), nil
 }
 
 func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
-	items := make([]*v1.Video, 0, len(result.Items))
+	items := make([]*v1.Video, 0)
+	if result == nil {
+		return &v1.VideoList{
+			Items: items,
+		}
+	}
+
+	items = make([]*v1.Video, 0, len(result.Items))
 	for _, item := range result.Items {
 		items = append(items, buildVideo(item))
 	}
@@ -289,7 +311,7 @@ func buildVideoList(result *repository.VideoListResult) *v1.VideoList {
 
 func buildHotVideoList(result *repository.VideoListResult) *v1.VideoList {
 	data := buildVideoList(result)
-	if result.HasMore {
+	if result != nil && result.HasMore {
 		data.NextCursor = result.NextCursorToken
 	}
 	return data

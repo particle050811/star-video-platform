@@ -177,7 +177,18 @@ func (s interactionService) ListUserComments(ctx context.Context, userID uint, c
 		return nil, err
 	}
 
-	items := make([]*interaction.UserComment, 0, len(result.Items))
+	return buildUserCommentList(result), nil
+}
+
+func buildUserCommentList(result *repository.UserCommentListResult) *interaction.UserCommentList {
+	items := make([]*interaction.UserComment, 0)
+	if result == nil {
+		return &interaction.UserCommentList{
+			Items: items,
+		}
+	}
+
+	items = make([]*interaction.UserComment, 0, len(result.Items))
 	for _, item := range result.Items {
 		items = append(items, &interaction.UserComment{
 			Id:        strconv.FormatUint(uint64(item.ID), 10),
@@ -200,7 +211,7 @@ func (s interactionService) ListUserComments(ctx context.Context, userID uint, c
 		Total:      result.Total,
 		NextCursor: nextCursor,
 		HasMore:    result.HasMore,
-	}, nil
+	}
 }
 
 func (s interactionService) DeleteComment(ctx context.Context, userID, commentID uint) error {

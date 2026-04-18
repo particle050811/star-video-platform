@@ -443,3 +443,30 @@ func TestVideoServiceListVideoCommentsBuildsCursorResponse(t *testing.T) {
 		t.Fatalf("expected created at %q, got %q", createdAt.Format(time.RFC3339), got.Items[0].CreatedAt)
 	}
 }
+
+func TestVideoServiceListVideoCommentsHandlesNilResult(t *testing.T) {
+	svc := videoService{
+		repo: fakeVideoRepository{
+			getVideoByIDFn: func(ctx context.Context, videoID uint) (*model.Video, error) {
+				return &model.Video{ID: videoID}, nil
+			},
+			listVideoCommentsFn: func(ctx context.Context, videoID uint, cursor uint, limit int) (*repository.VideoCommentListResult, error) {
+				return nil, nil
+			},
+		},
+	}
+
+	got, err := svc.ListVideoComments(context.Background(), 1, 0, 20)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.Total != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}

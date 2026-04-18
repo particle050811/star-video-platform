@@ -194,3 +194,43 @@ func TestInteractionServiceListUserCommentsBuildsCursorResponse(t *testing.T) {
 		t.Fatalf("unexpected cursor result: %+v", got)
 	}
 }
+
+func TestInteractionServiceListUserCommentsReturnsEmptyList(t *testing.T) {
+	svc := interactionService{
+		repo: fakeInteractionRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*repository.UserProfile, error) {
+				return &repository.UserProfile{ID: userID}, nil
+			},
+			listUserCommentsFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*repository.UserCommentListResult, error) {
+				return &repository.UserCommentListResult{}, nil
+			},
+		},
+	}
+
+	got, err := svc.ListUserComments(context.Background(), 5, 0, 20)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.Total != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}
+
+func TestBuildUserCommentListHandlesNilResult(t *testing.T) {
+	got := buildUserCommentList(nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 {
+		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}

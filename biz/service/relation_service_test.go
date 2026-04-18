@@ -53,3 +53,29 @@ func TestBuildSocialList(t *testing.T) {
 		t.Fatalf("expected second item avatar %q, got %q", "/static/avatars/bob.png", got.Items[1].AvatarUrl)
 	}
 }
+
+func TestBuildSocialListReturnsEmptyItems(t *testing.T) {
+	got := buildSocialList(&repository.RelationListResult{})
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 || got.Total != 0 || got.NextCursor != "" || got.HasMore {
+		t.Fatalf("unexpected empty result: %+v", got)
+	}
+}
+
+func TestBuildSocialListHandlesNilResult(t *testing.T) {
+	got := buildSocialList(nil)
+	if got == nil {
+		t.Fatal("expected non-nil data")
+	}
+	if got.Items == nil {
+		t.Fatal("expected non-nil empty items")
+	}
+	if len(got.Items) != 0 {
+		t.Fatalf("expected empty items, got %+v", got.Items)
+	}
+}
