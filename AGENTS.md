@@ -14,16 +14,17 @@
    mkdir -p docs/openapi
    protoc --http-swagger_out=output_mode=source_relative:docs/openapi -I idl idl/user.proto
    protoc --http-swagger_out=output_mode=source_relative:docs/openapi -I idl idl/video.proto
+   protoc --http-swagger_out=output_mode=source_relative:docs/openapi -I idl idl/interaction.proto
    protoc --http-swagger_out=output_mode=source_relative:docs/openapi -I idl idl/relation.proto
    ```
 
 ### OpenAPI 说明
 
 - 项目通过 `protoc-gen-http-swagger` 基于 proto 生成 OpenAPI 文档
-- 当前按模块分别生成 `user.openapi.yaml`、`video.openapi.yaml`、`relation.openapi.yaml`
+- 当前按模块分别生成 `user.openapi.yaml`、`video.openapi.yaml`、`interaction.openapi.yaml`、`relation.openapi.yaml`
 - 生成目录为 `docs/openapi/`
 - 服务启动后可通过 `/openapi` 或 `/openapi/` 访问文档入口
-- 原始文档访问路径为 `/openapi/openapi/user.openapi.yaml`、`/openapi/openapi/video.openapi.yaml`、`/openapi/openapi/relation.openapi.yaml`
+- 原始文档访问路径为 `/openapi/openapi/user.openapi.yaml`、`/openapi/openapi/video.openapi.yaml`、`/openapi/openapi/interaction.openapi.yaml`、`/openapi/openapi/relation.openapi.yaml`
 - 首次使用前需确保本机已安装插件：
   ```bash
   go install github.com/hertz-contrib/swagger-generate/protoc-gen-http-swagger@latest

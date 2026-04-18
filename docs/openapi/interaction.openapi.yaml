@@ -1,0 +1,245 @@
+# Generated with protoc-gen-http-swagger
+# https://github.com/hertz-contrib/swagger-generate/blob/main/protoc-gen-http-swagger
+
+openapi: 3.0.3
+info:
+    title: InteractionHandler API
+    version: 3.0.3
+paths:
+    /api/v1/interaction/comment:
+        post:
+            tags:
+                - InteractionHandler
+            operationId: InteractionHandler_PublishComment
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PublishCommentRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PublishCommentResponseBody'
+    /api/v1/interaction/comment/delete:
+        post:
+            tags:
+                - InteractionHandler
+            operationId: InteractionHandler_DeleteComment
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/DeleteCommentRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeleteCommentResponseBody'
+    /api/v1/interaction/comment/list:
+        get:
+            tags:
+                - InteractionHandler
+            operationId: InteractionHandler_ListUserComments
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListUserCommentsResponseBody'
+    /api/v1/interaction/like:
+        post:
+            tags:
+                - InteractionHandler
+            operationId: InteractionHandler_VideoLikeAction
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/VideoLikeActionRequestBody'
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VideoLikeActionResponseBody'
+    /api/v1/interaction/like/list:
+        get:
+            tags:
+                - InteractionHandler
+            operationId: InteractionHandler_ListLikedVideos
+            parameters:
+                - name: user_id
+                  in: query
+                  schema:
+                    type: string
+                - name: cursor
+                  in: query
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListLikedVideosResponseBody'
+components:
+    schemas:
+        BaseResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: int32
+                msg:
+                    type: string
+            description: BaseResponse 表示所有接口共享的返回状态（作业给的接口示例，但是一般不这么写）
+        DeleteCommentRequestBody:
+            type: object
+            properties:
+                comment_id:
+                    type: string
+        DeleteCommentResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        ListLikedVideosResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/VideoList'
+        ListUserCommentsResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+                data:
+                    $ref: '#/components/schemas/UserCommentList'
+        PublishCommentRequestBody:
+            type: object
+            properties:
+                video_id:
+                    type: string
+                content:
+                    type: string
+        PublishCommentResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        UserComment:
+            type: object
+            properties:
+                id:
+                    type: string
+                userId:
+                    type: string
+                videoId:
+                    type: string
+                content:
+                    type: string
+                likeCount:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+            description: UserComment 表示用户评论记录
+        UserCommentList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserComment'
+                total:
+                    type: string
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+            description: UserCommentList 用于返回用户评论分页结果
+        Video:
+            type: object
+            properties:
+                id:
+                    type: string
+                userId:
+                    type: string
+                videoUrl:
+                    type: string
+                coverUrl:
+                    type: string
+                title:
+                    type: string
+                description:
+                    type: string
+                visitCount:
+                    type: string
+                likeCount:
+                    type: string
+                commentCount:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                deletedAt:
+                    type: string
+            description: Video 为视频数据实体
+        VideoLikeActionRequestBody:
+            type: object
+            properties:
+                video_id:
+                    type: string
+                action_type:
+                    type: integer
+                    format: enum
+        VideoLikeActionResponseBody:
+            type: object
+            properties:
+                base:
+                    $ref: '#/components/schemas/BaseResponse'
+        VideoList:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Video'
+                nextCursor:
+                    type: string
+                hasMore:
+                    type: boolean
+            description: VideoList 同时返回视频和总数
+tags:
+    - name: InteractionHandler

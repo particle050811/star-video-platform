@@ -12,6 +12,7 @@ import (
 type fakeVideoDBStore struct {
 	createVideoFn        func(ctx context.Context, video *model.Video) error
 	getVideoByIDFn       func(ctx context.Context, videoID uint) (*model.Video, error)
+	listVideosByIDsFn    func(ctx context.Context, videoIDs []uint) ([]model.Video, error)
 	listVideosByUserIDFn func(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error)
 	searchVideosFn       func(ctx context.Context, params db.VideoQuery) ([]model.Video, error)
 	listHotVideosFn      func(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) ([]model.Video, error)
@@ -23,6 +24,13 @@ func (f fakeVideoDBStore) CreateVideo(ctx context.Context, video *model.Video) e
 
 func (f fakeVideoDBStore) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	return f.getVideoByIDFn(ctx, videoID)
+}
+
+func (f fakeVideoDBStore) ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error) {
+	if f.listVideosByIDsFn == nil {
+		return nil, nil
+	}
+	return f.listVideosByIDsFn(ctx, videoIDs)
 }
 
 func (f fakeVideoDBStore) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {

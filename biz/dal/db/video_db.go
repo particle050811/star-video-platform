@@ -49,6 +49,35 @@ func (v VideoDB) GetVideoByID(ctx context.Context, videoID uint) (*model.Video, 
 	return &video, nil
 }
 
+func (v VideoDB) ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error) {
+	videos := make([]model.Video, 0, len(videoIDs))
+	if len(videoIDs) == 0 {
+		return videos, nil
+	}
+
+	if err := v.gormDB().WithContext(ctx).
+		Where("id IN ?", videoIDs).
+		Find(&videos).Error; err != nil {
+		return nil, err
+	}
+
+	videoMap := make(map[uint]model.Video, len(videos))
+	for _, video := range videos {
+		videoMap[video.ID] = video
+	}
+
+	ordered := make([]model.Video, 0, len(videoIDs))
+	for _, videoID := range videoIDs {
+		video, ok := videoMap[videoID]
+		if !ok {
+			continue
+		}
+		ordered = append(ordered, video)
+	}
+
+	return ordered, nil
+}
+
 func (v VideoDB) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {
 	query := v.gormDB().WithContext(ctx).Model(&model.Video{}).Where("user_id = ?", userID)
 
@@ -124,6 +153,10 @@ func CreateVideo(ctx context.Context, video *model.Video) error {
 
 func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	return Videos.GetVideoByID(ctx, videoID)
+}
+
+func ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error) {
+	return Videos.ListVideosByIDs(ctx, videoIDs)
 }
 
 func ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {

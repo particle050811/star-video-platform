@@ -11,6 +11,7 @@ import (
 type videoDBStore interface {
 	CreateVideo(ctx context.Context, video *model.Video) error
 	GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error)
+	ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error)
 	ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error)
 	SearchVideos(ctx context.Context, params dbdal.VideoQuery) ([]model.Video, error)
 	ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) ([]model.Video, error)
@@ -50,6 +51,10 @@ func GetVideoByID(ctx context.Context, videoID uint) (*model.Video, error) {
 	return videos.GetVideoByID(ctx, videoID)
 }
 
+func ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error) {
+	return videos.ListVideosByIDs(ctx, videoIDs)
+}
+
 func ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*VideoListResult, error) {
 	return videos.ListVideosByUserID(ctx, userID, cursor, limit)
 }
@@ -84,6 +89,10 @@ func (s videoStore) GetVideoByID(ctx context.Context, videoID uint) (*model.Vide
 
 	_ = s.cache.SetVideoDetailCache(ctx, videoID, fetched)
 	return fetched, nil
+}
+
+func (s videoStore) ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]model.Video, error) {
+	return s.db.ListVideosByIDs(ctx, videoIDs)
 }
 
 func (s videoStore) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*VideoListResult, error) {
