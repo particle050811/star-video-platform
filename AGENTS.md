@@ -59,6 +59,13 @@
 ```text
 .
 ├── AGENTS.md
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── lint.yml
+├── .golangci.yml
+├── Dockerfile
+├── README.md
 ├── main.go
 ├── router.go
 ├── router_gen.go
@@ -73,26 +80,70 @@
 │   │   ├── model
 │   │   └── rdb
 │   ├── handler
-│   │   ├── ping.go
-│   │   └── platform
+│   │   ├── chat
+│   │   ├── interaction
+│   │   ├── relation
+│   │   ├── user
+│   │   ├── video
+│   │   └── ping.go
 │   ├── model
 │   │   ├── api
-│   │   └── platform
-│   ├── repository
-│   │   └── user_repo.go
-│   ├── router
+│   │   ├── chat
+│   │   ├── interaction
+│   │   ├── openapi
 │   │   ├── platform
+│   │   ├── relation
+│   │   ├── user
+│   │   └── video
+│   ├── repository
+│   │   ├── chat
+│   │   ├── comment
+│   │   ├── interaction
+│   │   ├── relation
+│   │   ├── user
+│   │   └── video
+│   ├── router
+│   │   ├── chat
+│   │   ├── interaction
+│   │   ├── relation
+│   │   ├── user
+│   │   ├── video
 │   │   └── register.go
 │   └── service
-│       ├── errors.go
-│       └── user_service.go
+│       ├── chat
+│       ├── interaction
+│       ├── relation
+│       ├── user
+│       ├── video
+│       └── service.go
+├── docs
+│   ├── index.html
+│   └── openapi
+│       ├── chat.openapi.yaml
+│       ├── interaction.openapi.yaml
+│       ├── relation.openapi.yaml
+│       ├── user.openapi.yaml
+│       └── video.openapi.yaml
 ├── idl
 │   ├── api.proto
+│   ├── chat.proto
 │   ├── common.proto
-│   └── user.proto
+│   ├── interaction.proto
+│   ├── openapi.proto
+│   ├── relation.proto
+│   ├── user.proto
+│   ├── video.proto
+│   └── openapi/
+│       ├── annotations.proto
+│       └── openapi.proto
 ├── pkg
+│   ├── auth
+│   ├── constant
+│   ├── middleware
+│   ├── pagination
+│   ├── parser
 │   └── response
-│       └── response.go
+│   └── upload
 └── script
     └── bootstrap.sh
 ```

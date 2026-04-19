@@ -3,9 +3,8 @@
 
 openapi: 3.0.3
 info:
-    title: Star Video Platform API
-    description: 短视频平台 HTTP OpenAPI 文档
-    version: v1
+    title: UserHandler API
+    version: 3.0.3
 paths:
     /api/v1/user/avatar:
         post:
