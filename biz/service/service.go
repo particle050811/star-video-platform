@@ -29,17 +29,20 @@ var (
 	ErrVideoFileRequired        = videosvc.ErrVideoFileRequired
 	ErrUnsupportedVideoExt      = videosvc.ErrUnsupportedVideoExt
 	ErrUnsupportedVideoCoverExt = videosvc.ErrUnsupportedVideoCoverExt
+	ErrVideoCursorInvalid       = videosvc.ErrVideoCursorInvalid
 
-	ErrCommentNotFound = interactionsvc.ErrCommentNotFound
-	ErrCommentTooLong  = interactionsvc.ErrCommentTooLong
-	ErrCommentEmpty    = interactionsvc.ErrCommentEmpty
-	ErrAlreadyLiked    = interactionsvc.ErrAlreadyLiked
-	ErrLikeNotFound    = interactionsvc.ErrLikeNotFound
-	ErrNoPermission    = interactionsvc.ErrNoPermission
+	ErrCommentNotFound       = interactionsvc.ErrCommentNotFound
+	ErrCommentTooLong        = interactionsvc.ErrCommentTooLong
+	ErrCommentEmpty          = interactionsvc.ErrCommentEmpty
+	ErrAlreadyLiked          = interactionsvc.ErrAlreadyLiked
+	ErrLikeNotFound          = interactionsvc.ErrLikeNotFound
+	ErrInvalidLikeActionType = interactionsvc.ErrInvalidLikeActionType
+	ErrNoPermission          = interactionsvc.ErrNoPermission
 
-	ErrCannotFollowSelf = relationsvc.ErrCannotFollowSelf
-	ErrAlreadyFollowed  = relationsvc.ErrAlreadyFollowed
-	ErrFollowNotFound   = relationsvc.ErrFollowNotFound
+	ErrCannotFollowSelf          = relationsvc.ErrCannotFollowSelf
+	ErrAlreadyFollowed           = relationsvc.ErrAlreadyFollowed
+	ErrFollowNotFound            = relationsvc.ErrFollowNotFound
+	ErrInvalidRelationActionType = relationsvc.ErrInvalidRelationActionType
 
 	ErrChatRoomNotFound       = chatsvc.ErrChatRoomNotFound
 	ErrChatRoomMemberNotFound = chatsvc.ErrChatRoomMemberNotFound

@@ -11,6 +11,7 @@ import (
 	"video-platform/pkg/auth"
 	"video-platform/pkg/upload"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -124,7 +125,10 @@ func (s userService) Login(ctx context.Context, username, password string) (acce
 	}
 
 	if err := s.auth.CheckPassword(user.Password, password); err != nil {
-		return "", "", ErrPasswordWrong
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return "", "", ErrPasswordWrong
+		}
+		return "", "", err
 	}
 
 	return s.auth.GenerateTokenPair(user.ID)

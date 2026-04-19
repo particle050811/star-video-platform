@@ -3,6 +3,7 @@ package rdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"video-platform/biz/dal/model"
 	"video-platform/pkg/parser"
@@ -111,6 +112,22 @@ func TestDefaultVideoCacheUsesGlobalRedisClient(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Title != "global hot" {
 		t.Fatalf("unexpected result: %+v", got)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet redis expectations: %v", err)
+	}
+}
+
+func TestVideoCacheGetHotVideoCacheVersionReturnsTypedErrorOnDirtyValue(t *testing.T) {
+	client, mock := redismock.NewClientMock()
+	cache := NewVideoCache(client)
+
+	mock.ExpectGet("video:hot:version").SetVal("dirty")
+
+	_, err := cache.GetHotVideoCacheVersion(context.Background())
+	if !errors.Is(err, ErrInvalidHotVideoCacheVersion) {
+		t.Fatalf("expected invalid version error, got %v", err)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

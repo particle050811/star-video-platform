@@ -27,6 +27,8 @@ func NewVideoCache(client *redis.Client) VideoCache {
 
 var DefaultVideoCache = NewVideoCache(nil)
 
+var ErrInvalidHotVideoCacheVersion = errors.New("invalid hot video cache version")
+
 func hotVideoCacheVersionKey() string {
 	return "video:hot:version"
 }
@@ -62,10 +64,10 @@ func (v VideoCache) GetHotVideoCacheVersion(ctx context.Context) (int64, error) 
 
 	version, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("%w: %v", ErrInvalidHotVideoCacheVersion, err)
 	}
 	if version < 1 {
-		return 0, errors.New("cache version must be greater than zero")
+		return 0, fmt.Errorf("%w: cache version must be greater than zero", ErrInvalidHotVideoCacheVersion)
 	}
 
 	return version, nil

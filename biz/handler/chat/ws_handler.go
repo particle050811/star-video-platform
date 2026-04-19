@@ -89,9 +89,8 @@ type chatWSHub struct {
 
 var (
 	chatWSUpgrader = websocket.HertzUpgrader{
-		CheckOrigin: func(ctx *app.RequestContext) bool {
-			return true
-		},
+		// Use the library same-origin default instead of allowing every Origin.
+		// Non-browser clients without Origin are still accepted.
 	}
 	defaultChatWSHub          = newChatWSHub()
 	chatWSSubscriberOnce      sync.Once

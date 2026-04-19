@@ -6,6 +6,7 @@ import (
 	"testing"
 	"video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
+	rdbdal "video-platform/biz/dal/rdb"
 	"video-platform/pkg/parser"
 )
 
@@ -183,7 +184,7 @@ func TestVideoStoreSearchVideosBuildsQuery(t *testing.T) {
 				if params.Cursor != 10 || params.Limit != 2 {
 					t.Fatalf("unexpected pagination: %+v", params)
 				}
-				return []model.Video{{ID: 1, Title: "result"}, {ID: 2, Title: "next"}}, nil
+				return []model.Video{{ID: 9, Title: "result"}, {ID: 8, Title: "next"}}, nil
 			},
 		},
 	}
@@ -195,8 +196,38 @@ func TestVideoStoreSearchVideosBuildsQuery(t *testing.T) {
 	if len(got.Items) != 1 || got.Items[0].Title != "result" {
 		t.Fatalf("unexpected result: %+v", got)
 	}
-	if got.NextCursor != 11 || !got.HasMore {
+	if got.NextCursor != 9 || !got.HasMore {
 		t.Fatalf("unexpected cursor result: %+v", got)
+	}
+}
+
+func TestVideoStoreListVideosByUserIDMapsInvalidCursor(t *testing.T) {
+	store := videoStore{
+		db: fakeVideoDBStore{
+			listVideosByUserIDFn: func(ctx context.Context, userID uint, cursor uint, limit int) ([]model.Video, error) {
+				return nil, db.ErrVideoCursorInvalid
+			},
+		},
+	}
+
+	_, err := store.ListVideosByUserID(context.Background(), 7, 12, 20)
+	if !errors.Is(err, ErrVideoCursorInvalid) {
+		t.Fatalf("expected error %v, got %v", ErrVideoCursorInvalid, err)
+	}
+}
+
+func TestVideoStoreSearchVideosMapsInvalidCursor(t *testing.T) {
+	store := videoStore{
+		db: fakeVideoDBStore{
+			searchVideosFn: func(ctx context.Context, params db.VideoQuery) ([]model.Video, error) {
+				return nil, db.ErrVideoCursorInvalid
+			},
+		},
+	}
+
+	_, err := store.SearchVideos(context.Background(), "", nil, 0, 0, "", 12, 20)
+	if !errors.Is(err, ErrVideoCursorInvalid) {
+		t.Fatalf("expected error %v, got %v", ErrVideoCursorInvalid, err)
 	}
 }
 
@@ -281,6 +312,66 @@ func TestVideoStoreListHotVideosFallsBackToDBAndSetsCache(t *testing.T) {
 	}
 	if len(cachedValue.Items) != 1 || cachedValue.Items[0].ID != 9 {
 		t.Fatalf("unexpected cached value: %+v", cachedValue)
+	}
+}
+
+func TestVideoStoreListHotVideosFallsBackToDBWhenCacheVersionDirty(t *testing.T) {
+	var cacheRead bool
+	var cacheWrite bool
+
+	store := videoStore{
+		db: fakeVideoDBStore{
+			listHotVideosFn: func(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) ([]model.Video, error) {
+				if limit != 2 {
+					t.Fatalf("expected limit %d, got %d", 2, limit)
+				}
+				return []model.Video{
+					{ID: 5, Title: "db hot", LikeCount: 10, VisitCount: 8},
+				}, nil
+			},
+		},
+		cache: fakeVideoCacheStore{
+			getHotVideoCacheVersionFn: func(ctx context.Context) (int64, error) {
+				return 0, rdbdal.ErrInvalidHotVideoCacheVersion
+			},
+			getHotVideoCacheFn: func(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, dest any) (bool, error) {
+				cacheRead = true
+				return false, nil
+			},
+			setHotVideoCacheFn: func(ctx context.Context, version int64, cursor parser.HotVideoCursorValue, limit int, value any) error {
+				cacheWrite = true
+				return nil
+			},
+		},
+	}
+
+	got, err := store.ListHotVideos(context.Background(), parser.HotVideoCursorValue{}, 1)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if cacheRead || cacheWrite {
+		t.Fatalf("cache should be bypassed on dirty version, read=%v write=%v", cacheRead, cacheWrite)
+	}
+	if len(got.Items) != 1 || got.Items[0].ID != 5 {
+		t.Fatalf("unexpected result: %+v", got)
+	}
+}
+
+func TestBuildVideoListResultUsesLastItemIDAsNextCursor(t *testing.T) {
+	got := buildVideoListResult([]model.Video{
+		{ID: 9, Title: "a"},
+		{ID: 7, Title: "b"},
+		{ID: 5, Title: "c"},
+	}, 99, 2)
+
+	if !got.HasMore {
+		t.Fatalf("expected has more, got %+v", got)
+	}
+	if got.NextCursor != 7 {
+		t.Fatalf("expected next cursor %d, got %d", 7, got.NextCursor)
+	}
+	if len(got.Items) != 2 || got.Items[1].ID != 7 {
+		t.Fatalf("unexpected items: %+v", got.Items)
 	}
 }
 

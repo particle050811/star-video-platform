@@ -61,6 +61,11 @@ func RelationAction(ctx context.Context, c *app.RequestContext) {
 				Base: response.Error(response.CodeFollowNotFound),
 			})
 			return
+		case errors.Is(err, service.ErrInvalidRelationActionType):
+			c.JSON(consts.StatusBadRequest, &relation.RelationActionResponse{
+				Base: response.ParamError(err.Error()),
+			})
+			return
 		}
 
 		log.Printf("[社交模块][关系操作] 操作失败 from_user_id=%d to_user_id=%d action_type=%s: %v", fromUserID, toUserID, req.ActionType.String(), err)

@@ -98,6 +98,45 @@ func TestInteractionServiceVideoLikeActionMapsConcurrentVideoDelete(t *testing.T
 	}
 }
 
+func TestInteractionServiceVideoLikeActionRejectsInvalidActionType(t *testing.T) {
+	svc := interactionService{
+		repo: fakeInteractionRepository{
+			getVideoByIDFn: func(ctx context.Context, videoID uint) (*model.Video, error) {
+				return &model.Video{ID: videoID}, nil
+			},
+			likeVideoFn: func(ctx context.Context, userID, videoID uint) error {
+				t.Fatal("likeVideo should not be called for invalid action type")
+				return nil
+			},
+			cancelLikeVideoFn: func(ctx context.Context, userID, videoID uint) (bool, error) {
+				t.Fatal("cancelLikeVideo should not be called for invalid action type")
+				return false, nil
+			},
+		},
+	}
+
+	err := svc.VideoLikeAction(context.Background(), 1, 2, interaction.LikeActionType(999))
+	if !errors.Is(err, ErrInvalidLikeActionType) {
+		t.Fatalf("expected error %v, got %v", ErrInvalidLikeActionType, err)
+	}
+}
+
+func TestInteractionServiceVideoLikeActionRejectsInvalidActionTypeBeforeVideoLookup(t *testing.T) {
+	svc := interactionService{
+		repo: fakeInteractionRepository{
+			getVideoByIDFn: func(ctx context.Context, videoID uint) (*model.Video, error) {
+				t.Fatal("getVideoByID should not be called for invalid action type")
+				return nil, nil
+			},
+		},
+	}
+
+	err := svc.VideoLikeAction(context.Background(), 1, 2, interaction.LikeActionType(999))
+	if !errors.Is(err, ErrInvalidLikeActionType) {
+		t.Fatalf("expected error %v, got %v", ErrInvalidLikeActionType, err)
+	}
+}
+
 func TestInteractionServicePublishCommentValidatesContent(t *testing.T) {
 	svc := interactionService{}
 

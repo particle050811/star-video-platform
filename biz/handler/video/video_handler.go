@@ -116,6 +116,12 @@ func ListPublishedVideos(ctx context.Context, c *app.RequestContext) {
 			})
 			return
 		}
+		if errors.Is(err, service.ErrVideoCursorInvalid) {
+			c.JSON(consts.StatusBadRequest, &video.ListPublishedVideosResponse{
+				Base: response.ParamError(err.Error()),
+			})
+			return
+		}
 		log.Printf("[视频模块][用户视频列表] 查询失败 user_id=%d: %v", userID, err)
 		c.JSON(consts.StatusInternalServerError, &video.ListPublishedVideosResponse{
 			Base: response.InternalError(),
@@ -150,6 +156,12 @@ func SearchVideos(ctx context.Context, c *app.RequestContext) {
 
 	data, err := service.Video.SearchVideos(ctx, &req, cursor)
 	if err != nil {
+		if errors.Is(err, service.ErrVideoCursorInvalid) {
+			c.JSON(consts.StatusBadRequest, &video.SearchVideosResponse{
+				Base: response.ParamError(err.Error()),
+			})
+			return
+		}
 		log.Printf("[视频模块][搜索视频] 查询失败 keywords=%s username=%s: %v", req.Keywords, req.Username, err)
 		c.JSON(consts.StatusInternalServerError, &video.SearchVideosResponse{
 			Base: response.InternalError(),

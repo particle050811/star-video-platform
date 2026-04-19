@@ -2,11 +2,14 @@ package video
 
 import (
 	"context"
+	"errors"
 	dbdal "video-platform/biz/dal/db"
 	"video-platform/biz/dal/model"
 	rdbdal "video-platform/biz/dal/rdb"
 	"video-platform/pkg/parser"
 )
+
+var ErrVideoCursorInvalid = errors.New("video cursor is invalid")
 
 type videoDBStore interface {
 	CreateVideo(ctx context.Context, video *model.Video) error
@@ -98,6 +101,9 @@ func (s videoStore) ListVideosByIDs(ctx context.Context, videoIDs []uint) ([]mod
 func (s videoStore) ListVideosByUserID(ctx context.Context, userID uint, cursor uint, limit int) (*VideoListResult, error) {
 	videos, err := s.db.ListVideosByUserID(ctx, userID, cursor, limit+1)
 	if err != nil {
+		if errors.Is(err, dbdal.ErrVideoCursorInvalid) {
+			return nil, ErrVideoCursorInvalid
+		}
 		return nil, err
 	}
 
@@ -115,6 +121,9 @@ func (s videoStore) SearchVideos(ctx context.Context, keywords string, userIDs [
 		Limit:    limit + 1,
 	})
 	if err != nil {
+		if errors.Is(err, dbdal.ErrVideoCursorInvalid) {
+			return nil, ErrVideoCursorInvalid
+		}
 		return nil, err
 	}
 
@@ -123,13 +132,13 @@ func (s videoStore) SearchVideos(ctx context.Context, keywords string, userIDs [
 
 func (s videoStore) ListHotVideos(ctx context.Context, cursor parser.HotVideoCursorValue, limit int) (*VideoListResult, error) {
 	version, err := s.cache.GetHotVideoCacheVersion(ctx)
-	if err != nil {
-		return nil, err
-	}
+	cacheable := err == nil
 
 	var result VideoListResult
-	if ok, err := s.cache.GetHotVideoCache(ctx, version, cursor, limit, &result); err == nil && ok {
-		return &result, nil
+	if cacheable {
+		if ok, err := s.cache.GetHotVideoCache(ctx, version, cursor, limit, &result); err == nil && ok {
+			return &result, nil
+		}
 	}
 
 	videoItems, err := s.db.ListHotVideos(ctx, cursor, limit+1)
@@ -141,7 +150,9 @@ func (s videoStore) ListHotVideos(ctx context.Context, cursor parser.HotVideoCur
 	if err != nil {
 		return nil, err
 	}
-	_ = s.cache.SetHotVideoCache(ctx, version, cursor, limit, result)
+	if cacheable {
+		_ = s.cache.SetHotVideoCache(ctx, version, cursor, limit, result)
+	}
 	return &result, nil
 }
 
@@ -152,8 +163,8 @@ func buildVideoListResult(videos []model.Video, cursor uint, limit int) *VideoLi
 	}
 
 	nextCursor := uint(0)
-	if hasMore {
-		nextCursor = cursor + uint(len(videos))
+	if hasMore && len(videos) > 0 {
+		nextCursor = videos[len(videos)-1].ID
 	}
 
 	return &VideoListResult{

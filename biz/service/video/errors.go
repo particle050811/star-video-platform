@@ -8,4 +8,5 @@ var (
 	ErrVideoFileRequired        = errors.New("视频文件不能为空")
 	ErrUnsupportedVideoExt      = errors.New("不支持的视频文件类型")
 	ErrUnsupportedVideoCoverExt = errors.New("不支持的视频封面文件类型")
+	ErrVideoCursorInvalid       = errors.New("视频分页游标已失效")
 )

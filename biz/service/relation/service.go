@@ -64,6 +64,10 @@ var defaultRelationService = relationService{
 var Relation = defaultRelationService
 
 func (s relationService) RelationAction(ctx context.Context, fromUserID, toUserID uint, actionType relation.RelationActionType) error {
+	if actionType != relationActionFollow && actionType != relationActionUnfollow {
+		return ErrInvalidRelationActionType
+	}
+
 	if fromUserID == toUserID {
 		return ErrCannotFollowSelf
 	}

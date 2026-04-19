@@ -137,6 +137,11 @@ func TestVideoServicePublishVideoValidation(t *testing.T) {
 	if !errors.Is(err, ErrVideoFileRequired) {
 		t.Fatalf("expected error %v, got %v", ErrVideoFileRequired, err)
 	}
+
+	err = svc.PublishVideo(context.Background(), 1, " \n\t ", "desc", &multipart.FileHeader{Filename: "a.mp4"}, nil)
+	if !errors.Is(err, ErrVideoTitleRequired) {
+		t.Fatalf("expected blank title error %v, got %v", ErrVideoTitleRequired, err)
+	}
 }
 
 func TestVideoServicePublishVideoMapsUserNotFound(t *testing.T) {
@@ -259,6 +264,61 @@ func TestVideoServicePublishVideoRemovesPreparedFilesOnRepositoryError(t *testin
 	}
 }
 
+func TestVideoServicePublishVideoReturnsCleanupFailure(t *testing.T) {
+	repoErr := errors.New("create video failed")
+	removeVideoErr := errors.New("remove video failed")
+	removeCoverErr := errors.New("remove cover failed")
+
+	svc := videoService{
+		repo: fakeVideoRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{ID: userID}, nil
+			},
+			createVideoFn: func(ctx context.Context, video *model.Video) error {
+				return repoErr
+			},
+		},
+		upload: fakeUploadProvider{
+			prepareVideoFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "/tmp/a.mp4", "/static/videos/a.mp4", nil
+			},
+			prepareVideoCoverFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "/tmp/a.jpg", "/static/video-covers/a.jpg", nil
+			},
+			saveFileFn: func(file *multipart.FileHeader, savePath string) error {
+				return nil
+			},
+			removeVideoFn: func(videoURL string) error {
+				return removeVideoErr
+			},
+			removeVideoCoverFn: func(coverURL string) error {
+				return removeCoverErr
+			},
+		},
+	}
+
+	err := svc.PublishVideo(
+		context.Background(),
+		1,
+		"title",
+		"desc",
+		&multipart.FileHeader{Filename: "a.mp4"},
+		&multipart.FileHeader{Filename: "a.jpg"},
+	)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, repoErr) {
+		t.Fatalf("expected repo error to be preserved, got %v", err)
+	}
+	if !errors.Is(err, removeVideoErr) {
+		t.Fatalf("expected remove video error to be exposed, got %v", err)
+	}
+	if !errors.Is(err, removeCoverErr) {
+		t.Fatalf("expected remove cover error to be exposed, got %v", err)
+	}
+}
+
 func TestVideoServiceListPublishedVideosUsesCursor(t *testing.T) {
 	svc := videoService{
 		repo: fakeVideoRepository{
@@ -293,6 +353,24 @@ func TestVideoServiceListPublishedVideosUsesCursor(t *testing.T) {
 	}
 	if got.NextCursor != "1" || !got.HasMore {
 		t.Fatalf("unexpected cursor response: %+v", got)
+	}
+}
+
+func TestVideoServiceListPublishedVideosMapsInvalidCursor(t *testing.T) {
+	svc := videoService{
+		repo: fakeVideoRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{ID: userID}, nil
+			},
+			listVideosByUserIDFn: func(ctx context.Context, userID uint, cursor uint, limit int) (*videorepo.VideoListResult, error) {
+				return nil, videorepo.ErrVideoCursorInvalid
+			},
+		},
+	}
+
+	_, err := svc.ListPublishedVideos(context.Background(), 7, 12, 0)
+	if !errors.Is(err, ErrVideoCursorInvalid) {
+		t.Fatalf("expected error %v, got %v", ErrVideoCursorInvalid, err)
 	}
 }
 
@@ -331,6 +409,21 @@ func TestVideoServiceSearchVideosUsesUsernameFilter(t *testing.T) {
 	}
 	if len(got.Items) != 1 || got.Items[0].Id != "9" {
 		t.Fatalf("unexpected response: %+v", got)
+	}
+}
+
+func TestVideoServiceSearchVideosMapsInvalidCursor(t *testing.T) {
+	svc := videoService{
+		repo: fakeVideoRepository{
+			searchVideosFn: func(ctx context.Context, keywords string, userIDs []uint, fromDate, toDate int64, sortBy string, cursor uint, limit int) (*videorepo.VideoListResult, error) {
+				return nil, videorepo.ErrVideoCursorInvalid
+			},
+		},
+	}
+
+	_, err := svc.SearchVideos(context.Background(), &v1.SearchVideosRequest{}, 12)
+	if !errors.Is(err, ErrVideoCursorInvalid) {
+		t.Fatalf("expected error %v, got %v", ErrVideoCursorInvalid, err)
 	}
 }
 

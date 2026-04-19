@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	relation "video-platform/biz/model/relation"
 	relationrepo "video-platform/biz/repository/relation"
 	userrepo "video-platform/biz/repository/user"
 
@@ -88,6 +89,45 @@ func TestRelationServiceRelationActionMapsUnfollowMiss(t *testing.T) {
 	err := svc.RelationAction(context.Background(), 1, 2, relationActionUnfollow)
 	if !errors.Is(err, ErrFollowNotFound) {
 		t.Fatalf("expected error %v, got %v", ErrFollowNotFound, err)
+	}
+}
+
+func TestRelationServiceRelationActionRejectsInvalidActionType(t *testing.T) {
+	svc := relationService{
+		repo: fakeRelationRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{ID: userID}, nil
+			},
+			followUserFn: func(ctx context.Context, fromUserID, toUserID uint) error {
+				t.Fatal("followUser should not be called for invalid action type")
+				return nil
+			},
+			unfollowUserFn: func(ctx context.Context, fromUserID, toUserID uint) (bool, error) {
+				t.Fatal("unfollowUser should not be called for invalid action type")
+				return false, nil
+			},
+		},
+	}
+
+	err := svc.RelationAction(context.Background(), 1, 2, relation.RelationActionType(999))
+	if !errors.Is(err, ErrInvalidRelationActionType) {
+		t.Fatalf("expected error %v, got %v", ErrInvalidRelationActionType, err)
+	}
+}
+
+func TestRelationServiceRelationActionRejectsInvalidActionTypeBeforeUserLookup(t *testing.T) {
+	svc := relationService{
+		repo: fakeRelationRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				t.Fatal("getUserByID should not be called for invalid action type")
+				return nil, nil
+			},
+		},
+	}
+
+	err := svc.RelationAction(context.Background(), 1, 2, relation.RelationActionType(999))
+	if !errors.Is(err, ErrInvalidRelationActionType) {
+		t.Fatalf("expected error %v, got %v", ErrInvalidRelationActionType, err)
 	}
 }
 

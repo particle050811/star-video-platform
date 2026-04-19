@@ -3,6 +3,8 @@ package video
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -111,6 +113,7 @@ var Video = videoService{
 }
 
 func (s videoService) PublishVideo(ctx context.Context, userID uint, title, description string, videoFile, coverFile *multipart.FileHeader) (err error) {
+	title = strings.TrimSpace(title)
 	if title == "" {
 		return ErrVideoTitleRequired
 	}
@@ -129,8 +132,11 @@ func (s videoService) PublishVideo(ctx context.Context, userID uint, title, desc
 	var coverURL string
 	defer func() {
 		if err != nil {
-			_ = s.upload.RemoveVideo(videoURL)
-			_ = s.upload.RemoveVideoCover(coverURL)
+			cleanupErr := cleanupPublishedVideoFiles(s.upload, videoURL, coverURL)
+			if cleanupErr != nil {
+				log.Printf("[视频模块][发布视频] 清理失败 user_id=%d video_url=%s cover_url=%s: %v", userID, videoURL, coverURL, cleanupErr)
+				err = errors.Join(err, fmt.Errorf("cleanup failed: %w", cleanupErr))
+			}
 		}
 	}()
 
@@ -174,6 +180,24 @@ func (s videoService) PublishVideo(ctx context.Context, userID uint, title, desc
 	return nil
 }
 
+func cleanupPublishedVideoFiles(provider videoUploadProvider, videoURL, coverURL string) error {
+	var errs []error
+	if videoURL != "" {
+		if err := provider.RemoveVideo(videoURL); err != nil {
+			errs = append(errs, fmt.Errorf("remove video: %w", err))
+		}
+	}
+	if coverURL != "" {
+		if err := provider.RemoveVideoCover(coverURL); err != nil {
+			errs = append(errs, fmt.Errorf("remove cover: %w", err))
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errors.Join(errs...)
+}
+
 func (s videoService) ListPublishedVideos(ctx context.Context, userID uint, cursor uint, limit int32) (*v1.VideoList, error) {
 	if _, err := s.repo.GetUserByID(ctx, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -184,6 +208,9 @@ func (s videoService) ListPublishedVideos(ctx context.Context, userID uint, curs
 
 	result, err := s.repo.ListVideosByUserID(ctx, userID, cursor, pagination.NormalizeLimit(limit))
 	if err != nil {
+		if errors.Is(err, videorepo.ErrVideoCursorInvalid) {
+			return nil, ErrVideoCursorInvalid
+		}
 		return nil, err
 	}
 
@@ -202,6 +229,9 @@ func (s videoService) SearchVideos(ctx context.Context, req *v1.SearchVideosRequ
 
 	result, err := s.repo.SearchVideos(ctx, req.Keywords, userIDs, req.FromDate, req.ToDate, req.SortBy, cursor, pagination.NormalizeLimit(req.Limit))
 	if err != nil {
+		if errors.Is(err, videorepo.ErrVideoCursorInvalid) {
+			return nil, ErrVideoCursorInvalid
+		}
 		return nil, err
 	}
 

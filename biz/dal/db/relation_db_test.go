@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"testing"
 
@@ -60,6 +61,29 @@ func TestRelationDBFollowUser(t *testing.T) {
 	}
 }
 
+func TestRelationDBFollowUserRollbackWhenFollowingCountUpdateMisses(t *testing.T) {
+	relationDB, mock, cleanup := newMockRelationDB(t)
+	defer cleanup()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `relations` (`from_user_id`,`to_user_id`,`created_at`) VALUES (?,?,?)")).
+		WithArgs(1, 2, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `users` SET `following_count`=following_count + ?,`updated_at`=? WHERE id = ? AND `users`.`deleted_at` IS NULL")).
+		WithArgs(1, sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	err := relationDB.FollowUser(context.Background(), 1, 2)
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected error %v, got %v", gorm.ErrRecordNotFound, err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
 func TestRelationDBUnfollowUserNotFound(t *testing.T) {
 	relationDB, mock, cleanup := newMockRelationDB(t)
 	defer cleanup()
@@ -76,6 +100,35 @@ func TestRelationDBUnfollowUserNotFound(t *testing.T) {
 	}
 	if deleted {
 		t.Fatal("expected deleted=false")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}
+
+func TestRelationDBUnfollowUserRollbackWhenFollowerCountUpdateMisses(t *testing.T) {
+	relationDB, mock, cleanup := newMockRelationDB(t)
+	defer cleanup()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `relations` WHERE from_user_id = ? AND to_user_id = ?")).
+		WithArgs(1, 2).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `users` SET `following_count`=following_count - ?,`updated_at`=? WHERE id = ? AND `users`.`deleted_at` IS NULL")).
+		WithArgs(1, sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `users` SET `follower_count`=follower_count - ?,`updated_at`=? WHERE id = ? AND `users`.`deleted_at` IS NULL")).
+		WithArgs(1, sqlmock.AnyArg(), 2).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	deleted, err := relationDB.UnfollowUser(context.Background(), 1, 2)
+	if deleted {
+		t.Fatal("expected deleted=false when transaction rolls back")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected error %v, got %v", gorm.ErrRecordNotFound, err)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

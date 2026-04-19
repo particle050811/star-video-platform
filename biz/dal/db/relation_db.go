@@ -38,16 +38,24 @@ func (r RelationDB) FollowUser(ctx context.Context, fromUserID, toUserID uint) e
 			return err
 		}
 
-		if err := tx.Model(&model.User{}).
+		res := tx.Model(&model.User{}).
 			Where("id = ?", fromUserID).
-			Update("following_count", gorm.Expr("following_count + ?", 1)).Error; err != nil {
-			return err
+			Update("following_count", gorm.Expr("following_count + ?", 1))
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 
-		if err := tx.Model(&model.User{}).
+		res = tx.Model(&model.User{}).
 			Where("id = ?", toUserID).
-			Update("follower_count", gorm.Expr("follower_count + ?", 1)).Error; err != nil {
-			return err
+			Update("follower_count", gorm.Expr("follower_count + ?", 1))
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 
 		return nil
@@ -66,20 +74,28 @@ func (r RelationDB) UnfollowUser(ctx context.Context, fromUserID, toUserID uint)
 		if res.RowsAffected == 0 {
 			return nil
 		}
-		deleted = true
 
-		if err := tx.Model(&model.User{}).
+		res = tx.Model(&model.User{}).
 			Where("id = ?", fromUserID).
-			Update("following_count", gorm.Expr("following_count - ?", 1)).Error; err != nil {
-			return err
+			Update("following_count", gorm.Expr("following_count - ?", 1))
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 
-		if err := tx.Model(&model.User{}).
+		res = tx.Model(&model.User{}).
 			Where("id = ?", toUserID).
-			Update("follower_count", gorm.Expr("follower_count - ?", 1)).Error; err != nil {
-			return err
+			Update("follower_count", gorm.Expr("follower_count - ?", 1))
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 
+		deleted = true
 		return nil
 	})
 

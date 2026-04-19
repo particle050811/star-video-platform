@@ -136,3 +136,28 @@ func TestUserDBCreateUser(t *testing.T) {
 		t.Fatalf("unmet sql expectations: %v", err)
 	}
 }
+
+func TestUserDBListUserIDsByUsernameEscapesLikePattern(t *testing.T) {
+	userDB, mock, cleanup := newMockUserDB(t)
+	defer cleanup()
+
+	rows := sqlmock.NewRows([]string{"id"}).
+		AddRow(3).
+		AddRow(5)
+
+	mock.ExpectQuery("SELECT `id` FROM `users` WHERE username LIKE \\? ESCAPE '\\\\\\\\' AND `users`\\.`deleted_at` IS NULL").
+		WithArgs("%a\\%b\\_c\\\\d%").
+		WillReturnRows(rows)
+
+	got, err := userDB.ListUserIDsByUsername(context.Background(), "a%b_c\\d")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(got) != 2 || got[0] != 3 || got[1] != 5 {
+		t.Fatalf("unexpected user ids: %v", got)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
+	}
+}

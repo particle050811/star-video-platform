@@ -28,6 +28,8 @@ const (
 	chatMessageStatusNormal = "normal"
 )
 
+var errChatRoomTypeInvalid = errors.New("聊天房间类型不合法")
+
 type chatRepository interface {
 	GetUserByID(ctx context.Context, userID uint) (*userrepo.UserProfile, error)
 	CreateChatRoom(ctx context.Context, room *model.ChatRoom, members []model.ChatRoomMember) error
@@ -327,6 +329,12 @@ func (s chatService) MarkRoomRead(ctx context.Context, userID, roomID, messageID
 	}
 	if err := s.repo.UpdateChatLastReadMessageID(ctx, roomID, userID, messageID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if _, memberErr := s.repo.GetChatRoomMember(ctx, roomID, userID); memberErr != nil {
+				if errors.Is(memberErr, gorm.ErrRecordNotFound) {
+					return ErrChatRoomMemberNotFound
+				}
+				return memberErr
+			}
 			return ErrChatMessageNotFound
 		}
 		return err
@@ -407,7 +415,7 @@ func mapChatRoomType(roomType chat.ChatRoomType) (string, error) {
 	case chat.ChatRoomType_CHAT_ROOM_TYPE_GROUP:
 		return chatRoomTypeGroup, nil
 	default:
-		return "", ErrChatMemberRequired
+		return "", errChatRoomTypeInvalid
 	}
 }
 

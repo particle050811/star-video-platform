@@ -55,6 +55,11 @@ func VideoLikeAction(ctx context.Context, c *app.RequestContext) {
 				Base: response.Error(response.CodeLikeNotFound),
 			})
 			return
+		case errors.Is(err, service.ErrInvalidLikeActionType):
+			c.JSON(consts.StatusBadRequest, &interaction.VideoLikeActionResponse{
+				Base: response.ParamError(err.Error()),
+			})
+			return
 		}
 
 		log.Printf("[互动模块][点赞操作] 操作失败 user_id=%d video_id=%d action_type=%s: %v", userID, videoID, req.ActionType.String(), err)

@@ -84,6 +84,10 @@ var Interaction = interactionService{
 }
 
 func (s interactionService) VideoLikeAction(ctx context.Context, userID, videoID uint, actionType interaction.LikeActionType) error {
+	if actionType != likeActionAdd && actionType != likeActionCancel {
+		return ErrInvalidLikeActionType
+	}
+
 	if _, err := s.repo.GetVideoByID(ctx, videoID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return videosvc.ErrVideoNotFound

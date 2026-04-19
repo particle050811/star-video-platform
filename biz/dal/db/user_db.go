@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 	"video-platform/biz/dal/model"
 
 	"gorm.io/gorm"
@@ -38,12 +39,22 @@ func (u UserDB) GetUserByUsername(ctx context.Context, username string) (*model.
 
 func (u UserDB) ListUserIDsByUsername(ctx context.Context, username string) ([]uint, error) {
 	var userIDs []uint
+	escapedUsername := escapeLikePattern(username)
 	if err := u.gormDB().WithContext(ctx).Model(&model.User{}).
-		Where("username LIKE ?", "%"+username+"%").
+		Where("username LIKE ? ESCAPE '\\\\'", "%"+escapedUsername+"%").
 		Pluck("id", &userIDs).Error; err != nil {
 		return nil, err
 	}
 	return userIDs, nil
+}
+
+func escapeLikePattern(input string) string {
+	replacer := strings.NewReplacer(
+		"\\", "\\\\",
+		"%", "\\%",
+		"_", "\\_",
+	)
+	return replacer.Replace(input)
 }
 
 func (u UserDB) ListUsersByIDs(ctx context.Context, userIDs []uint) ([]model.User, error) {

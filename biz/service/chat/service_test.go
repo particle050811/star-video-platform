@@ -14,13 +14,15 @@ import (
 )
 
 type fakeChatRepo struct {
-	users         map[uint]*userrepo.UserProfile
-	members       map[uint]map[uint]*model.ChatRoomMember
-	rooms         map[uint]*model.ChatRoom
-	createdRoom   *model.ChatRoom
-	createdMember []model.ChatRoomMember
-	updateReadErr error
-	deletedMember bool
+	users                 map[uint]*userrepo.UserProfile
+	members               map[uint]map[uint]*model.ChatRoomMember
+	rooms                 map[uint]*model.ChatRoom
+	createdRoom           *model.ChatRoom
+	createdMember         []model.ChatRoomMember
+	updateReadErr         error
+	updateReadCalled      bool
+	memberGoneAfterUpdate bool
+	deletedMember         bool
 }
 
 func (f *fakeChatRepo) GetUserByID(_ context.Context, userID uint) (*userrepo.UserProfile, error) {
@@ -49,6 +51,9 @@ func (f *fakeChatRepo) GetChatRoomByID(_ context.Context, roomID uint) (*model.C
 }
 
 func (f *fakeChatRepo) GetChatRoomMember(_ context.Context, roomID, userID uint) (*model.ChatRoomMember, error) {
+	if f.memberGoneAfterUpdate && f.updateReadCalled {
+		return nil, gorm.ErrRecordNotFound
+	}
 	if roomMembers, ok := f.members[roomID]; ok {
 		if member, ok := roomMembers[userID]; ok {
 			return member, nil
@@ -74,6 +79,7 @@ func (f *fakeChatRepo) DeleteChatRoomMember(_ context.Context, _, _ uint) (bool,
 }
 
 func (f *fakeChatRepo) UpdateChatLastReadMessageID(_ context.Context, _, _, _ uint) error {
+	f.updateReadCalled = true
 	return f.updateReadErr
 }
 
@@ -152,6 +158,26 @@ func TestChatServiceCreateGroupRequiresName(t *testing.T) {
 	}
 }
 
+func TestChatServiceCreateRoomRejectsInvalidType(t *testing.T) {
+	repo := &fakeChatRepo{
+		users: map[uint]*userrepo.UserProfile{
+			1: {ID: 1, Username: "alice"},
+		},
+	}
+	svc := chatService{repo: repo}
+
+	_, err := svc.CreateRoom(context.Background(), 1, &chat.CreateChatRoomRequest{
+		Type:          chat.ChatRoomType_CHAT_ROOM_TYPE_UNSPECIFIED,
+		MemberUserIds: []string{"2"},
+	})
+	if !errors.Is(err, errChatRoomTypeInvalid) {
+		t.Fatalf("expected errChatRoomTypeInvalid, got %v", err)
+	}
+	if errors.Is(err, ErrChatMemberRequired) {
+		t.Fatalf("invalid room type must not map to ErrChatMemberRequired")
+	}
+}
+
 func TestChatServiceLeavePrivateRoomAllowsCreator(t *testing.T) {
 	repo := &fakeChatRepo{
 		rooms: map[uint]*model.ChatRoom{
@@ -188,6 +214,27 @@ func TestChatServiceMarkRoomReadMapsMissingMessage(t *testing.T) {
 	err := svc.MarkRoomRead(context.Background(), 1, 10, 99)
 	if !errors.Is(err, ErrChatMessageNotFound) {
 		t.Fatalf("expected ErrChatMessageNotFound, got %v", err)
+	}
+}
+
+func TestChatServiceMarkRoomReadMapsMissingMemberAfterUpdate(t *testing.T) {
+	repo := &fakeChatRepo{
+		rooms: map[uint]*model.ChatRoom{
+			10: {ID: 10, Type: chatRoomTypeGroup},
+		},
+		members: map[uint]map[uint]*model.ChatRoomMember{
+			10: {
+				1: {RoomID: 10, UserID: 1, Role: chatMemberRoleMember},
+			},
+		},
+		updateReadErr:         gorm.ErrRecordNotFound,
+		memberGoneAfterUpdate: true,
+	}
+	svc := chatService{repo: repo}
+
+	err := svc.MarkRoomRead(context.Background(), 1, 10, 99)
+	if !errors.Is(err, ErrChatRoomMemberNotFound) {
+		t.Fatalf("expected ErrChatRoomMemberNotFound, got %v", err)
 	}
 }
 

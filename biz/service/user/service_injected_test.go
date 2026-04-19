@@ -3,11 +3,14 @@ package user
 import (
 	"context"
 	"errors"
+	"mime/multipart"
 	"testing"
 	"video-platform/biz/dal/model"
 	userrepo "video-platform/biz/repository/user"
 	"video-platform/pkg/auth"
+	"video-platform/pkg/upload"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -55,6 +58,24 @@ func (f fakeAuthProvider) GenerateTokenPair(userID uint) (accessToken, refreshTo
 
 func (f fakeAuthProvider) RefreshTokens(refreshToken string) (newAccessToken, newRefreshToken string, err error) {
 	return f.refreshTokensFn(refreshToken)
+}
+
+type fakeUploadProvider struct {
+	prepareAvatarFn func(userID uint, originalFilename string) (savePath, avatarURL string, err error)
+	saveFileFn      func(file *multipart.FileHeader, savePath string) error
+	removeAvatarFn  func(avatarURL string) error
+}
+
+func (f fakeUploadProvider) PrepareAvatar(userID uint, originalFilename string) (savePath, avatarURL string, err error) {
+	return f.prepareAvatarFn(userID, originalFilename)
+}
+
+func (f fakeUploadProvider) SaveFile(file *multipart.FileHeader, savePath string) error {
+	return f.saveFileFn(file, savePath)
+}
+
+func (f fakeUploadProvider) RemoveAvatar(avatarURL string) error {
+	return f.removeAvatarFn(avatarURL)
 }
 
 func TestUserServiceRegisterMapsDuplicatedKey(t *testing.T) {
@@ -131,6 +152,55 @@ func TestUserServiceLoginSuccess(t *testing.T) {
 	}
 }
 
+func TestUserServiceLoginMapsPasswordMismatchOnly(t *testing.T) {
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByUsernameFn: func(ctx context.Context, username string) (*model.User, error) {
+				return &model.User{
+					ID:       42,
+					Username: username,
+					Password: "hashed-password",
+				}, nil
+			},
+		},
+		auth: fakeAuthProvider{
+			checkPasswordFn: func(hashedPassword, password string) error {
+				return bcrypt.ErrMismatchedHashAndPassword
+			},
+		},
+	}
+
+	_, _, err := svc.Login(context.Background(), "alice", "wrong-password")
+	if !errors.Is(err, ErrPasswordWrong) {
+		t.Fatalf("expected error %v, got %v", ErrPasswordWrong, err)
+	}
+}
+
+func TestUserServiceLoginReturnsInternalPasswordCheckError(t *testing.T) {
+	wantErr := bcrypt.ErrHashTooShort
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByUsernameFn: func(ctx context.Context, username string) (*model.User, error) {
+				return &model.User{
+					ID:       42,
+					Username: username,
+					Password: "bad-hash",
+				}, nil
+			},
+		},
+		auth: fakeAuthProvider{
+			checkPasswordFn: func(hashedPassword, password string) error {
+				return wantErr
+			},
+		},
+	}
+
+	_, _, err := svc.Login(context.Background(), "alice", "plain-password")
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected error %v, got %v", wantErr, err)
+	}
+}
+
 func TestUserServiceRefreshTokenMapsKnownErrors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -190,5 +260,174 @@ func TestUserServiceGetUserInfoMapsRecordNotFound(t *testing.T) {
 	_, err := svc.GetUserInfo(context.Background(), 99)
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected error %v, got %v", ErrUserNotFound, err)
+	}
+}
+
+func TestUserServiceUpdateUserAvatarRemovesPreparedAvatarOnSaveFailure(t *testing.T) {
+	file := &multipart.FileHeader{Filename: "avatar.png"}
+	saveErr := errors.New("save failed")
+	var removed []string
+
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{
+					ID:        userID,
+					Username:  "alice",
+					AvatarURL: "/static/avatars/old.png",
+				}, nil
+			},
+			updateUserAvatarFn: func(ctx context.Context, userID uint, avatarURL string) error {
+				t.Fatal("repo update should not be called when save file fails")
+				return nil
+			},
+		},
+		upload: fakeUploadProvider{
+			prepareAvatarFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "/tmp/new-avatar.png", "/static/avatars/new.png", nil
+			},
+			saveFileFn: func(gotFile *multipart.FileHeader, savePath string) error {
+				if gotFile != file {
+					t.Fatalf("expected same file pointer")
+				}
+				if savePath != "/tmp/new-avatar.png" {
+					t.Fatalf("expected save path %q, got %q", "/tmp/new-avatar.png", savePath)
+				}
+				return saveErr
+			},
+			removeAvatarFn: func(avatarURL string) error {
+				removed = append(removed, avatarURL)
+				return nil
+			},
+		},
+	}
+
+	err := svc.UpdateUserAvatar(context.Background(), 7, file)
+	if !errors.Is(err, saveErr) {
+		t.Fatalf("expected error %v, got %v", saveErr, err)
+	}
+	if len(removed) != 1 || removed[0] != "/static/avatars/new.png" {
+		t.Fatalf("expected prepared avatar cleanup, got %v", removed)
+	}
+}
+
+func TestUserServiceUpdateUserAvatarRemovesPreparedAvatarOnRepoFailure(t *testing.T) {
+	file := &multipart.FileHeader{Filename: "avatar.png"}
+	updateErr := errors.New("update failed")
+	var removed []string
+
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{
+					ID:        userID,
+					Username:  "alice",
+					AvatarURL: "/static/avatars/old.png",
+				}, nil
+			},
+			updateUserAvatarFn: func(ctx context.Context, userID uint, avatarURL string) error {
+				if avatarURL != "/static/avatars/new.png" {
+					t.Fatalf("expected avatar url %q, got %q", "/static/avatars/new.png", avatarURL)
+				}
+				return updateErr
+			},
+		},
+		upload: fakeUploadProvider{
+			prepareAvatarFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "/tmp/new-avatar.png", "/static/avatars/new.png", nil
+			},
+			saveFileFn: func(gotFile *multipart.FileHeader, savePath string) error {
+				return nil
+			},
+			removeAvatarFn: func(avatarURL string) error {
+				removed = append(removed, avatarURL)
+				return nil
+			},
+		},
+	}
+
+	err := svc.UpdateUserAvatar(context.Background(), 7, file)
+	if !errors.Is(err, updateErr) {
+		t.Fatalf("expected error %v, got %v", updateErr, err)
+	}
+	if len(removed) != 1 || removed[0] != "/static/avatars/new.png" {
+		t.Fatalf("expected prepared avatar cleanup, got %v", removed)
+	}
+}
+
+func TestUserServiceUpdateUserAvatarRemovesOldAvatarAfterSuccess(t *testing.T) {
+	file := &multipart.FileHeader{Filename: "avatar.png"}
+	var removed []string
+
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{
+					ID:        userID,
+					Username:  "alice",
+					AvatarURL: "/static/avatars/old.png",
+				}, nil
+			},
+			updateUserAvatarFn: func(ctx context.Context, userID uint, avatarURL string) error {
+				return nil
+			},
+		},
+		upload: fakeUploadProvider{
+			prepareAvatarFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "/tmp/new-avatar.png", "/static/avatars/new.png", nil
+			},
+			saveFileFn: func(gotFile *multipart.FileHeader, savePath string) error {
+				return nil
+			},
+			removeAvatarFn: func(avatarURL string) error {
+				removed = append(removed, avatarURL)
+				return nil
+			},
+		},
+	}
+
+	err := svc.UpdateUserAvatar(context.Background(), 7, file)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(removed) != 1 || removed[0] != "/static/avatars/old.png" {
+		t.Fatalf("expected old avatar cleanup, got %v", removed)
+	}
+}
+
+func TestUserServiceUpdateUserAvatarMapsUnsupportedExt(t *testing.T) {
+	file := &multipart.FileHeader{Filename: "avatar.exe"}
+	var removed []string
+
+	svc := userService{
+		repo: fakeUserRepository{
+			getUserByIDFn: func(ctx context.Context, userID uint) (*userrepo.UserProfile, error) {
+				return &userrepo.UserProfile{
+					ID:       userID,
+					Username: "alice",
+				}, nil
+			},
+		},
+		upload: fakeUploadProvider{
+			prepareAvatarFn: func(userID uint, originalFilename string) (string, string, error) {
+				return "", "", upload.ErrUnsupportedAvatarExt
+			},
+			saveFileFn: func(gotFile *multipart.FileHeader, savePath string) error {
+				t.Fatal("save file should not be called when prepare avatar fails")
+				return nil
+			},
+			removeAvatarFn: func(avatarURL string) error {
+				removed = append(removed, avatarURL)
+				return nil
+			},
+		},
+	}
+
+	err := svc.UpdateUserAvatar(context.Background(), 7, file)
+	if !errors.Is(err, ErrUnsupportedAvatarExt) {
+		t.Fatalf("expected error %v, got %v", ErrUnsupportedAvatarExt, err)
+	}
+	if len(removed) != 1 || removed[0] != "" {
+		t.Fatalf("expected empty prepared avatar cleanup, got %v", removed)
 	}
 }
