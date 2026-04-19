@@ -30,6 +30,30 @@
   go install github.com/hertz-contrib/swagger-generate/protoc-gen-http-swagger@latest
   ```
 
+### Docker 运行说明
+
+- 当前仓库的 Docker 方案为“仅应用容器化”，MySQL 和 Redis 默认复用宿主机现有实例，不在 `Dockerfile` 或 compose 中一并启动
+- 在 Windows + Docker Desktop + WSL2 环境下，若直接使用桥接网络，容器访问宿主机 MySQL 可能出现握手异常；当前验证通过的运行方式是使用主机网络：
+  ```bash
+  docker build -t star-video-platform .
+  mkdir -p storage
+  docker run -d --name star-video-platform --network host -v "$(pwd)/storage:/app/storage" star-video-platform
+  ```
+- Docker 镜像当前直接复制仓库根目录 `.env` 到容器内 `/app/.env`
+- 由于使用 `--network host`，容器内可直接通过 `127.0.0.1:3306` 和 `127.0.0.1:6379` 访问宿主机上的 MySQL / Redis
+- 上传文件目录使用相对路径 `./storage/...`，容器工作目录为 `/app`，需要持久化上传文件时将宿主机 `storage` 挂载到容器 `/app/storage`：
+  ```bash
+  mkdir -p storage
+  docker run -d --name star-video-platform --network host -v "$(pwd)/storage:/app/storage" star-video-platform
+  ```
+- 后台运行后使用 `docker logs -f star-video-platform` 查看应用日志
+- 如需进入运行中的容器终端，先用 `docker ps` 查看容器名或 ID，再执行：
+  ```bash
+  docker exec -it <容器名或容器ID> sh
+  ```
+- 当前运行镜像基于 Alpine，默认使用 `sh`，不要假设容器内一定有 `bash`
+- 当前 `build.sh` 已使用 `CGO_ENABLED=0 go build`，以兼容 `alpine` 运行镜像
+
 ### 当前项目目录结构
 
 ```text
