@@ -158,10 +158,7 @@ func (h *chatWSHub) sendToClient(client *chatWSClient, payload any) bool {
 		return false
 	}
 
-	sent := true
-	if !client.trySend(payload) {
-		sent = false
-	}
+	sent := client.trySend(payload)
 	h.mu.RUnlock()
 
 	if !sent {
@@ -347,10 +344,7 @@ func (c *chatWSClient) handleMarkRead(ctx context.Context, raw json.RawMessage) 
 		return
 	}
 
-	defaultChatWSHub.sendToClient(c, chatWSResponse(chatWSEventReadMarked, chatWSReadMarkedPayload{
-		RoomID:            req.RoomID,
-		LastReadMessageID: req.LastReadMessageID,
-	}))
+	defaultChatWSHub.sendToClient(c, chatWSResponse(chatWSEventReadMarked, chatWSReadMarkedPayload(req)))
 }
 
 func (c *chatWSClient) writeServiceError(roomID uint, err error) {

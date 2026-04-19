@@ -30,7 +30,9 @@ func SaveFile(file *multipart.FileHeader, savePath string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() {
+		_ = src.Close()
+	}()
 
 	if err := os.MkdirAll(filepath.Dir(savePath), 0o755); err != nil {
 		return err
@@ -40,7 +42,9 @@ func SaveFile(file *multipart.FileHeader, savePath string) error {
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func() {
+		_ = dst.Close()
+	}()
 
 	if _, err = io.Copy(dst, src); err != nil {
 		return err

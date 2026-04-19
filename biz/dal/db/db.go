@@ -47,7 +47,11 @@ func createDatabase(dsn string) {
 	if err != nil {
 		log.Fatalf("连接 MySQL 失败: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("关闭 MySQL 初始化连接失败: %v", closeErr)
+		}
+	}()
 
 	// 创建数据库
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", dbName))

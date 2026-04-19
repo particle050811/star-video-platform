@@ -57,20 +57,6 @@ func (f fakeAuthProvider) RefreshTokens(refreshToken string) (newAccessToken, ne
 	return f.refreshTokensFn(refreshToken)
 }
 
-type noopUploadProvider struct{}
-
-func (noopUploadProvider) PrepareAvatar(userID uint, originalFilename string) (savePath, avatarURL string, err error) {
-	return "", "", nil
-}
-
-func (noopUploadProvider) SaveFile(file interface{}, savePath string) error {
-	return nil
-}
-
-func (noopUploadProvider) RemoveAvatar(avatarURL string) error {
-	return nil
-}
-
 func TestUserServiceRegisterMapsDuplicatedKey(t *testing.T) {
 	svc := userService{
 		repo: fakeUserRepository{
